@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import telebot
 
-from .banking_system import initialize_system, BankingClient, UserError, TransactionError
+from .banking_system import BankingClient, UserError, TransactionError
 from . import settings
 
 bot = telebot.TeleBot(settings.BOT_TOKEN)
-initialize_system()
+database = Database(settings.DATABASE_FILE)
+database.initialize_system()
+client_factory = BankingClientFactory(database)
 
 # Initial commands
 
@@ -24,7 +26,7 @@ def help_message(message):
 @bot.message_handler(commands=['create_admin',])
 def create_admin(message):
     # Admin creation command; works if user has no registered account in bot and no admins were created.
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         admin_creation_message = client.create_admin()
     except UserError as e:
@@ -34,7 +36,7 @@ def create_admin(message):
 @bot.message_handler(regexp=r"^\/register [a-zA-Z0-9а-яА-Я]{1,150}")
 def register_user(message):
      # Admin creation command; works if user has no registered account in bot.
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         user_creation_message = bot.send_message(client.chat_id, client.register_user(message.text))
     except UserError as e:
@@ -47,7 +49,7 @@ def register_user(message):
 @bot.message_handler(commands=['admin_help',])
 def admin_help_message(message):
     # Help command
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         client.admin_validation()
         bot.reply_to(message, settings.ADMIN_HELP_MESSAGE)
@@ -58,7 +60,7 @@ def admin_help_message(message):
 @bot.message_handler(commands=['hacker_help',])
 def admin_help_message(message):
     # Help command
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         client.hacker_validation()
         bot.reply_to(message, settings.HACKER_HELP_MESSAGE)
@@ -69,7 +71,7 @@ def admin_help_message(message):
 
 @bot.message_handler(regexp=r"^\/delete [a-zA-Z0-9]{10}")
 def delete_user(message):
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         message = client.delete_user(message.text)
     except UserError as err:
@@ -78,7 +80,7 @@ def delete_user(message):
 
 @bot.message_handler(commands=['inspect_all',])
 def inspect_all_users(message):
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         message = client.inspect_all_users(message.text)
     except UserError as err:
@@ -87,7 +89,7 @@ def inspect_all_users(message):
 
 @bot.message_handler(regexp=r"^\/set_attribute [a-zA-Z0-9]{10} (finances|hacker_level|hacker_defence|is_admin) [0-9]+")
 def set_attribute(message):
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         message = client.set_attribute(message.text)
     except UserError as err:
@@ -98,7 +100,7 @@ def set_attribute(message):
 
 @bot.message_handler(commands=['inspect',])
 def inspect_self(message):
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         message = client.inspect_self()
     except UserError as err:
@@ -111,7 +113,7 @@ def inspect_self(message):
 def send_message(message):
     # Generic messaging command; allows to send any message to another user registered in bot
     # Only user's unique hash is required to send message; message is signed by sender's hash
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         reciever_chat_id, sent_message = client.prepare_message(message.text)
     except UserError as err:
@@ -124,7 +126,7 @@ def send_message(message):
 
 @bot.message_handler(commands=['list_sent',])
 def list_sent_transactions(message):
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         message = client.inspect_transactions(is_sender=True)
     except (UserError, TransactionError) as err:
@@ -133,7 +135,7 @@ def list_sent_transactions(message):
 
 @bot.message_handler(commands=['list_recieved',])
 def list_recieved_transactions(message):
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         message = client.inspect_transactions(is_sender=False)
     except (UserError, TransactionError) as err:
@@ -143,7 +145,7 @@ def list_recieved_transactions(message):
 
 @bot.message_handler(regexp=r"^\/send [a-zA-Z0-9]{10} [0-9]+")
 def create_transaction(message, is_anonymous=False):
-    client = BankingClient(message)
+    client = client_factory.create_client(message)
     try:
         sender_chat_id, reciever_chat_id, transaction_message = client.create_transaction(message.text)
     except (UserError, TransactionError) as err:
@@ -158,7 +160,7 @@ def create_transaction(message, is_anonymous=False):
 if settings.HACKING_ALLOWED:
     @bot.message_handler(regexp=r"^\/h@ck_user [a-zA-Z0-9]{10}")
     def hack_user(message):
-        client = BankingClient(message)
+        client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_user(message.text)
         except UserError as err:
@@ -172,7 +174,7 @@ if settings.HACKING_ALLOWED:
 
     @bot.message_handler(regexp=r"^\/h@ck_list_sent [a-zA-Z0-9]{10}")
     def hack_user_sent_transaction_list(message):
-        client = BankingClient(message)
+        client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_transactions(message.text, is_sender=True)
         except (UserError, TransactionError) as err:
@@ -185,7 +187,7 @@ if settings.HACKING_ALLOWED:
 
     @bot.message_handler(regexp=r"^\/h@ck_list_recieved [a-zA-Z0-9]{10}")
     def hack_user_recieved_transaction_list(message):
-        client = BankingClient(message)
+        client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_transactions(message.text, is_sender=False)
         except (UserError, TransactionError) as err:
@@ -198,7 +200,7 @@ if settings.HACKING_ALLOWED:
 
     @bot.message_handler(regexp=r"\/mess@ge [a-zA-Z0-9]{10} [\w\W]+")
     def send_hacked_message(message):
-        client = BankingClient(message)
+        client = client_factory.create_client(message)
         try:
             reciever_chat_id, sent_message, show_sender = client.prepare_hacker_message(message.text)
         except UserError as err:

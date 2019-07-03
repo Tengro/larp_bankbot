@@ -17,47 +17,10 @@ class Transaction(object):
             amount=self.amount, created=self.created_time, transaction_hash=self.transaction_hash
         )
         
-
-    def create_db_record(self):
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO transactions VALUES(?, ?, ?, ?, ?,)
-            """,
-            (
-                self.sender_hash, self.recepient_hash, self.amount, self.transaction_hash, self.created_time,
-            )
-        )
-        conn.commit()
-        conn.close()
-
-    def update_db_value(self, field_name, value):
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        cursor.execute(
-            f"""
-            UPDATE transactions SET {field_name} = {value} WHERE transaction_hash=?;
-            """,
-            (self.transaction_hash,)
-        )
-        conn.commit()
-        conn.close()
+    @classmethod
+    def create_transaction(self, sender_hash, recepient_hash, amount, database):
+        database.create_transaction(sender_hash, recepient_hash, amount)
 
     @classmethod
-    def list_transactions(cls, user_hash, is_sender):
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        search_term = 'sender_hash' if is_sender else 'recepient_hash'
-        transaction_data = cursor.execute(
-            """
-            SELECT * from transactions WHERE {}=? ORDER BY created_time
-            """.format(search_term),
-            (user_hash,)
-        )
-        transaction_data = transaction_data.fetchall()
-        conn.close()
-        transactions = []
-        for transaction in transaction_data:
-            transactions.append(cls(*transaction))
-        return transactions    
+    def list_transactions(cls, user_hash, is_sender, database):
+        return database.inspect_transactions(user_hash, is_sender, cls)
