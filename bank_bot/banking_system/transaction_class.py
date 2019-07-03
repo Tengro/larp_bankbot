@@ -19,7 +19,7 @@ class Transaction(object):
         
     @classmethod
     def create_transaction(self, sender_hash, recepient_hash, amount, database):
-        database.create_transaction(sender_hash, recepient_hash, amount)
+        return database.create_transaction(sender_hash, recepient_hash, amount)
 
     @classmethod
     def list_transactions(cls, user_hash, is_sender, database):

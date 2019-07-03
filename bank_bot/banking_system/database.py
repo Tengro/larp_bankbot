@@ -141,6 +141,7 @@ class Database(object):
         )
         conn.commit()
         conn.close()
+        return transaction_hash
 
     def inspect_transactions(self, user_hash, is_sender, klass):
         conn = sqlite3.connect(self.database_file)

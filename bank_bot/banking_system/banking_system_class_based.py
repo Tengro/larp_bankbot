@@ -4,7 +4,7 @@ from bank_bot.settings import (
     DATETIME_FORMAT, NO_USER_ERROR, NO_ADMIN_ERROR, ALREADY_ADMIN,
     ADMIN_RECORD_CREATED, ALREADY_REGISTERED, NO_NAME, REGISTRATION_MESSAGE,
     DELETION_MESSAGE, TRANSACTION_NO_FINANCES, TRANSACTION_NO_USER, TRANSACTION_MESSAGE,
-    NO_HACKER, NO_TRANSACTIONS_FOUND, NO_USER_DATA, NO_USERS_FOUND, ATTRIBUTE_UPDATE_MESSAGE,
+    NO_HACKER, NO_TRANSACTIONS_FOUND, NO_USER_DATA, ATTRIBUTE_UPDATE_MESSAGE,
     ALREADY_HAVE_USER
 )
 
@@ -69,7 +69,7 @@ class BankingClient(object):
         self.admin_validation()
         target_user_hash = message_text.strip('/delete ')
         user = User.delete_by_hash(target_user_hash, self.database)
-        return DELETION_MESSAGE.substitute(character_hash=character_hash)
+        return DELETION_MESSAGE.substitute(character_hash=target_user_hash)
         
     def inspect_all_users(self):
         self.admin_validation()
@@ -77,8 +77,6 @@ class BankingClient(object):
         resulting_data = ""
         for user in all_users:
             resulting_data += str(user) + '\n'
-        if not resulting_data:
-            resulting_data = NO_USERS_FOUND
         return resulting_data
 
     def inspect_self(self):
@@ -105,7 +103,7 @@ class BankingClient(object):
     def prepare_message(self, message):
         self.user_validation()
         target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
-        message = re.search(r"[\w\W]+$", message).group(0)
+        message = re.search(r" [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[12:]
         target_user = self.get_user_by_user_hash(target_user_hash)
         if target_user is None:
             raise UserError(NO_USER_ERROR)
@@ -114,7 +112,7 @@ class BankingClient(object):
     def prepare_hacker_message(self, message):
         self.hacker_validation()
         target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
-        message = re.search(r"[\w\W]+$", message).group(0)
+        message = re.search(r" [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[12:]
         target_user = self.get_user_by_user_hash(target_user_hash)
         if target_user is None:
             raise UserError(NO_USER_ERROR)
@@ -135,14 +133,16 @@ class BankingClient(object):
         self.user_validation()
         target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        amount = int(re.search(r"[0-9]+$",message).group(0))
+        amount = float(re.search(r"[0-9.]+$",message).group(0))
         if self.user.finances < amount:
             raise TransactionError(TRANSACTION_NO_FINANCES)
         if not target_user:
             raise TransactionError(TRANSACTION_NO_USER)
-        Transaction.create_transaction(self.user.character_hash, target_user_hash, amount, self.database)
-        User.update_db_value(target_user_hash, "finances", target_user.finances + amount, self.database)
-        User.update_db_value(self.user.hash, "finances", self.user.finances - amount, self.database)
+        transaction_hash = Transaction.create_transaction(self.user.character_hash, target_user_hash, amount, self.database)
+        reciever_amount = target_user.finances + amount
+        sender_amount = self.user.finances - amount
+        User.update_db_value(target_user_hash, "finances", reciever_amount, self.database)
+        User.update_db_value(self.user.character_hash, "finances", sender_amount, self.database)
         transaction_message = TRANSACTION_MESSAGE.substitute(
             sender_hash=self.user.character_hash, 
             reciever_hash=target_user_hash,
@@ -167,5 +167,5 @@ class BankingClient(object):
         self.hacker_validation()
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        resulting_data = inspect_transactions(is_sender, target_user_hash)
+        resulting_data = self.inspect_transactions(is_sender, target_user_hash)
         return resulting_data, target_user.chat_id, self.user.hacker_level <= target_user.hacker_defence
