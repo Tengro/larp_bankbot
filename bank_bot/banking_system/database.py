@@ -1,6 +1,7 @@
+import sqlite3
 from datetime import datetime
 from hashlib import md5
-from bank_bot.settings import DEFAULT_FINANCES
+from bank_bot.settings import DEFAULT_FINANCES, DATETIME_FORMAT
 
 class Database(object):
     def __init__(self, file_path):
@@ -35,7 +36,7 @@ class Database(object):
         user_data = cursor.execute(
             """
             SELECT * from users WHERE {search_term}=?
-            """.format(search_term),
+            """.format(search_term=search_term),
             (value,)
         )
         user_data = user_data.fetchone()
@@ -56,6 +57,7 @@ class Database(object):
 
     def create_admin(self, user_id, chat_id):
         created = datetime.now().strftime(DATETIME_FORMAT)
+
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
         cursor.execute(
@@ -71,10 +73,11 @@ class Database(object):
         conn.close()
 
     def create_user(self, user_id, chat_id, character_name):
-        character_hash = md5(character_name.encode()).hexdigest()[:10]
+        character_hash = str(md5(character_name.encode()).hexdigest()[:10])
+        created = datetime.now().strftime(DATETIME_FORMAT)
+
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
-        created = datetime.now().strftime(DATETIME_FORMAT)
         cursor.execute(
             """
             INSERT INTO users VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -84,18 +87,26 @@ class Database(object):
                 created, 0, 0, 0
             )
         )
+        user_data = cursor.execute(
+            """
+            SELECT * from users WHERE {search_term}=?
+            """.format(search_term="character_hash"),
+            (character_hash,)
+        )
+        user_data = user_data.fetchone()
         conn.commit()
         conn.close()
+
         return character_hash
 
-    def update_db_value(self, user_hash, field_name, value):
+    def update_user_value(self, user_hash, field_name, value):
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
         cursor.execute(
             f"""
             UPDATE users SET {field_name} = {value} WHERE character_hash=?;
             """,
-            (self.character_hash,)
+            (user_hash,)
         )
         conn.commit()
         conn.close()
@@ -115,17 +126,17 @@ class Database(object):
             all_users.append(klass(*user_data))
         return all_users
 
-    def create_transaction(self, sender_hash, recepient_hash, amount)
-        transaction_hash = md5(sender_hash + recepient_hash).hexdigest()[:15]
+    def create_transaction(self, sender_hash, recepient_hash, amount):
+        transaction_hash = md5((sender_hash + recepient_hash).encode()).hexdigest()[:15]
         created = datetime.now().strftime(DATETIME_FORMAT)
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO transactions VALUES(?, ?, ?, ?, ?,)
+            INSERT INTO transactions VALUES(?, ?, ?, ?, ?)
             """,
             (
-                ssender_hash, recepient_hash, amount, transaction_hash, created,
+                sender_hash, recepient_hash, amount, transaction_hash, created,
             )
         )
         conn.commit()

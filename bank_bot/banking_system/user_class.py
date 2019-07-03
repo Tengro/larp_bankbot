@@ -49,7 +49,7 @@ class User(object):
 
     @classmethod
     def delete_by_hash(cls, target_user_hash, database):
-        database.delete_user('character_name', user_name)
+        database.delete_user(target_user_hash)
 
     @classmethod
     def inspect_all_users(cls, database):
@@ -61,7 +61,7 @@ class User(object):
 
     @classmethod
     def create_user(self, user_id, chat_id, character_name, database):
-        database.create_user(user_id, chat_id, character_name)
+        return database.create_user(user_id, chat_id, character_name)
 
     @classmethod
     def update_db_value(self, user_hash, field_name, value, database):
