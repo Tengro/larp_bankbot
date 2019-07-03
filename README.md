@@ -2,7 +2,7 @@
 LARP BankBot: бот загального користування для імплементації банкінгу на рольових іграх живої дії
 
 Статус білда майстер-бранчу (Travis CI):  
-[![Build Status](https://travis-ci.org/Tengro/larp_bankbot.svg?branch=master)](https://travis-ci.org/Tengro/larp_bankbot)
+[![Build Status](https://travis-ci.org/Tengro/larp_bankbot.svg?branch=master)](https://travis-ci.org/Tengro/larp_bankbot)  
 (Якщо цей статус почервоніє - пишіть tengro@gmail.com або у Телеграм @tengro)
 
 ## Для чого це потрібно?
