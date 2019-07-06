@@ -247,7 +247,7 @@ if settings.HACKING_ALLOWED:
     def hack_list_all_transactions(message):
         client = client_factory.create_client(message)
         try:
-            results, victim_chat_id, show_sender = client.hack_inspect_all_transactions(message)
+            results, victim_chat_id, show_sender = client.hack_inspect_all_transactions(message.text)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
             return
@@ -260,7 +260,7 @@ if settings.HACKING_ALLOWED:
     def hack_list_pair_transactions(message):
         client = client_factory.create_client(message)
         try:
-            results, victim_chat_id, victim_hash, second_victim_chat_id, second_victim_hash, show_sender = client.hack_inspect_pair_history(message)
+            results, victim_chat_id, victim_hash, second_victim_chat_id, second_victim_hash, show_sender = client.hack_inspect_pair_history(message.text)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
             return

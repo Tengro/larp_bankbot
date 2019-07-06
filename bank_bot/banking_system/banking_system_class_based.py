@@ -171,7 +171,7 @@ class BankingClient(object):
         transactions = Transaction.list_transactions(user_hash, is_sender, self.database)
         resulting_data = ""
         for transaction in transactions:
-            resulting_data += str(transaction) + '\n'
+            resulting_data += str(transaction) + '\n\n'
         if not resulting_data:
             resulting_data = NO_TRANSACTIONS_FOUND
         return resulting_data
@@ -190,7 +190,7 @@ class BankingClient(object):
         transactions = Transaction.list_all_transactions(user_hash, self.database)
         resulting_data = ""
         for transaction in transactions:
-            resulting_data += str(transaction) + '\n'
+            resulting_data += str(transaction) + '\n\n'
         if not resulting_data:
             resulting_data = NO_TRANSACTIONS_FOUND
         return resulting_data
@@ -203,7 +203,7 @@ class BankingClient(object):
         transactions = Transaction.list_pair_history_transactions(sender_hash, reciever_hash, self.database)
         resulting_data = ""
         for transaction in transactions:
-            resulting_data += str(transaction) + '\n'
+            resulting_data += str(transaction) + '\n\n'
         if not resulting_data:
             resulting_data = NO_TRANSACTIONS_FOUND
         return resulting_data
