@@ -5,7 +5,7 @@ from bank_bot.settings import (
     ADMIN_RECORD_CREATED, ALREADY_REGISTERED, NO_NAME, REGISTRATION_MESSAGE,
     DELETION_MESSAGE, TRANSACTION_NO_FINANCES, TRANSACTION_NO_USER, TRANSACTION_MESSAGE,
     NO_HACKER, NO_TRANSACTIONS_FOUND, NO_USER_DATA, ATTRIBUTE_UPDATE_MESSAGE,
-    ALREADY_HAVE_USER
+    ALREADY_HAVE_USER,ZERO_TRANSACTION, SELF_TRANSACTION, TRANSACTION_UNALLOWED_VALUE
 )
 
 from bank_bot.banking_system.user_class import User
@@ -76,7 +76,7 @@ class BankingClient(object):
         all_users = User.inspect_all_users(self.database)
         resulting_data = ""
         for user in all_users:
-            resulting_data += str(user) + '\n'
+            resulting_data += str(user) + '\n\n'
         return resulting_data
 
     def inspect_self(self):
@@ -133,11 +133,20 @@ class BankingClient(object):
         self.user_validation()
         target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        amount = float(re.search(r"[0-9.]+$",message).group(0))
+        message = re.search(r" [a-zA-Z0-9]{10} [\w\W0-9.]+$", message).group(0)[12:]
+        def allowed_values(message):
+             return all([char.isdigit() or char == '.' for char in message])
+        if not allowed_values(message):
+            raise TransactionError(TRANSACTION_UNALLOWED_VALUE.substitute(value=message))
+        amount = float(message)
         if self.user.finances < amount:
             raise TransactionError(TRANSACTION_NO_FINANCES)
         if not target_user:
             raise TransactionError(TRANSACTION_NO_USER)
+        if target_user_hash == self.user.character_hash:
+            raise TransactionError(SELF_TRANSACTION)
+        if amount <= 0:
+            raise TransactionError(ZERO_TRANSACTION)
         transaction_hash = Transaction.create_transaction(self.user.character_hash, target_user_hash, amount, self.database)
         reciever_amount = target_user.finances + amount
         sender_amount = self.user.finances - amount

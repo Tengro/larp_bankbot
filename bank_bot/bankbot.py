@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import telebot
 
-from .banking_system import BankingClient, UserError, TransactionError
+from .banking_system import BankingClientFactory, UserError, TransactionError, Database
 from . import settings
 
 bot = telebot.TeleBot(settings.BOT_TOKEN)
@@ -38,9 +38,9 @@ def register_user(message):
      # Admin creation command; works if user has no registered account in bot.
     client = client_factory.create_client(message)
     try:
-        user_creation_message = bot.send_message(client.chat_id, client.register_user(message.text))
+        user_creation_message = client.register_user(message.text)
     except UserError as e:
-        user_creation_message = bot.send_message(client.chat_id, e.message)
+        user_creation_message = e.message
     bot.send_message(client.chat_id, user_creation_message)
     # TODO: Add Admin notification of registration
 
@@ -58,7 +58,7 @@ def admin_help_message(message):
         bot.send_message(client.chat_id, err.message)
 
 @bot.message_handler(commands=['hacker_help',])
-def admin_help_message(message):
+def hacker_help_message(message):
     # Help command
     client = client_factory.create_client(message)
     try:
@@ -81,10 +81,7 @@ def delete_user(message):
 @bot.message_handler(commands=['inspect_all',])
 def inspect_all_users(message):
     client = client_factory.create_client(message)
-    try:
-        message = client.inspect_all_users(message.text)
-    except UserError as err:
-        message = err.message
+    message = client.inspect_all_users()
     bot.send_message(client.chat_id, message)
 
 @bot.message_handler(regexp=r"^\/set_attribute [a-zA-Z0-9]{10} (finances|hacker_level|hacker_defence|is_admin) [0-9]+")
@@ -120,7 +117,8 @@ def send_message(message):
         bot.send_message(client.chat_id, err)
         return
     bot.send_message(client.chat_id, f"{settings.MESSAGE_SEND_RESULT}: {sent_message}")
-    bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {client.user.character_hash}: {sent_message}")
+    bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE}: {sent_message}. {settings.MESSAGE_SENDER}")
+    bot.send_message(reciever_chat_id, f"{client.user.character_hash}")
 
 # TRANSACTIONS
 
@@ -143,7 +141,7 @@ def list_recieved_transactions(message):
     bot.send_message(client.chat_id, message)
 
 
-@bot.message_handler(regexp=r"^\/send [a-zA-Z0-9]{10} [0-9]+")
+@bot.message_handler(regexp=r"^\/send [a-zA-Z0-9]{10} [\w\W0-9.]+")
 def create_transaction(message, is_anonymous=False):
     client = client_factory.create_client(message)
     try:
@@ -198,7 +196,7 @@ if settings.HACKING_ALLOWED:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.RECIEVED_TRANSACTIONS_DATA, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
 
-    @bot.message_handler(regexp=r"\/mess@ge [a-zA-Z0-9]{10} [\w\W]+")
+    @bot.message_handler(regexp=r"\/h@ck_message [a-zA-Z0-9]{10} [\w\W]+")
     def send_hacked_message(message):
         client = client_factory.create_client(message)
         try:
@@ -208,7 +206,9 @@ if settings.HACKING_ALLOWED:
             return
         bot.send_message(client.chat_id, f"{settings.MESSAGE_SEND_RESULT}: {sent_message}")
         if show_sender:
-            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {client.user.character_hash}: {sent_message}")
+            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE}: {sent_message}. {settings.MESSAGE_SENDER}")
+            bot.send_message(reciever_chat_id, f"{client.user.character_hash}")
         else:
-            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE}: {sent_message}")
+            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE}: {sent_message}. {settings.MESSAGE_SENDER}")
+            bot.send_message(reciever_chat_id, f"{settings.ANON_USER}")
 

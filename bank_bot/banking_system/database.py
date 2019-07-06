@@ -35,7 +35,7 @@ class Database(object):
         cursor = conn.cursor()
         user_data = cursor.execute(
             """
-            SELECT * from users WHERE {search_term}=?
+            SELECT * from users WHERE {search_term}=? COLLATE NOCASE
             """.format(search_term=search_term),
             (value,)
         )
