@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import telebot
 
-from .banking_system import BankingClientFactory, UserError, TransactionError, Database
+from .banking_system import BankingClientFactory, UserError, TransactionError, Database, HackerError
 from . import settings
 
 bot = telebot.TeleBot(settings.BOT_TOKEN)
@@ -42,7 +42,9 @@ def register_user(message):
     except UserError as e:
         user_creation_message = e.message
     bot.send_message(client.chat_id, user_creation_message)
-    # TODO: Add Admin notification of registration
+    admin_list = client.get_admins()
+    for admin in admin_list:
+        bot.send_message(admin.chat_id, user_creation_message)
 
 # Admin commands
 
@@ -120,9 +122,20 @@ def send_message(message):
     bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE}: {sent_message}. {settings.MESSAGE_SENDER}")
     bot.send_message(reciever_chat_id, f"{client.user.character_hash}")
 
+@bot.message_handler(regexp=r"\/admin_hail [\w\W]+")
+def admin_hail_users(message):
+    client = client_factory.create_client(message)
+    try:
+        message_list = client.admin_hail_users(message.text)
+    except UserError as err:
+        bot.send_message(client.chat_id, err)
+        return
+    for message in message_list:
+        bot.send_message(message.chat_id, f"{settings.ADMIN_HAIL_PREFIX}: {message.message}")
+
 # TRANSACTIONS
 
-@bot.message_handler(commands=['list_sent',])
+@bot.message_handler(commands=['history_sent',])
 def list_sent_transactions(message):
     client = client_factory.create_client(message)
     try:
@@ -131,11 +144,29 @@ def list_sent_transactions(message):
         message = err.message
     bot.send_message(client.chat_id, message)
 
-@bot.message_handler(commands=['list_recieved',])
+@bot.message_handler(commands=['history_recieved',])
 def list_recieved_transactions(message):
     client = client_factory.create_client(message)
     try:
         message = client.inspect_transactions(is_sender=False)
+    except (UserError, TransactionError) as err:
+        message = err.message
+    bot.send_message(client.chat_id, message)
+
+@bot.message_handler(commands=['history_all',])
+def list_all_transactions(message):
+    client = client_factory.create_client(message)
+    try:
+        message = client.inspect_all_transactions()
+    except (UserError, TransactionError) as err:
+        message = err.message
+    bot.send_message(client.chat_id, message)
+
+@bot.message_handler(regexp=r"^\/history_pair [a-zA-Z0-9]{10}")
+def list_pair_transactions(message):
+    client = client_factory.create_client(message)
+    try:
+        message = client.inspect_pair_history(message=message)
     except (UserError, TransactionError) as err:
         message = err.message
     bot.send_message(client.chat_id, message)
@@ -161,7 +192,7 @@ if settings.HACKING_ALLOWED:
         client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_user(message.text)
-        except UserError as err:
+        except (UserError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
             return
         bot.send_message(client.chat_id, results)
@@ -170,12 +201,12 @@ if settings.HACKING_ALLOWED:
             bot.send_message(victim_chat_id, hack_message)
 
 
-    @bot.message_handler(regexp=r"^\/h@ck_list_sent [a-zA-Z0-9]{10}")
+    @bot.message_handler(regexp=r"^\/h@ck_history_sent [a-zA-Z0-9]{10}")
     def hack_user_sent_transaction_list(message):
         client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_transactions(message.text, is_sender=True)
-        except (UserError, TransactionError) as err:
+        except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
             return
         bot.send_message(client.chat_id, results)
@@ -183,12 +214,12 @@ if settings.HACKING_ALLOWED:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.SENT_TRANSACTIONS_DATA, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
 
-    @bot.message_handler(regexp=r"^\/h@ck_list_recieved [a-zA-Z0-9]{10}")
+    @bot.message_handler(regexp=r"^\/h@ck_history_recieved [a-zA-Z0-9]{10}")
     def hack_user_recieved_transaction_list(message):
         client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_transactions(message.text, is_sender=False)
-        except (UserError, TransactionError) as err:
+        except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
             return
         bot.send_message(client.chat_id, results)
@@ -201,14 +232,45 @@ if settings.HACKING_ALLOWED:
         client = client_factory.create_client(message)
         try:
             reciever_chat_id, sent_message, show_sender = client.prepare_hacker_message(message.text)
-        except UserError as err:
+        except (UserError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
             return
-        bot.send_message(client.chat_id, f"{settings.MESSAGE_SEND_RESULT}: {sent_message}")
+        bot.send_message(client.chat_id, f"{settings.MESSAGE_SEND_RESULT} {sent_message}")
         if show_sender:
-            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE}: {sent_message}. {settings.MESSAGE_SENDER}")
+            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}. {settings.MESSAGE_SENDER}")
             bot.send_message(reciever_chat_id, f"{client.user.character_hash}")
         else:
-            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE}: {sent_message}. {settings.MESSAGE_SENDER}")
+            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}. {settings.MESSAGE_SENDER}")
             bot.send_message(reciever_chat_id, f"{settings.ANON_USER}")
+
+    @bot.message_handler(regexp=r"^\/h@ck_history_all [a-zA-Z0-9]{10}")
+    def hack_list_all_transactions(message):
+        client = client_factory.create_client(message)
+        try:
+            results, victim_chat_id, show_sender = client.hack_inspect_all_transactions(message)
+        except (UserError, TransactionError, HackerError) as err:
+            bot.send_message(client.chat_id, err.message)
+            return
+        bot.send_message(client.chat_id, results)
+        if show_sender:
+            hack_message = settings.HACK_ALERT.substitute(data_type=settings.TRANSACTIONS_DATA_HISTORY, hacker_hash=client.user.character_hash)
+            bot.send_message(victim_chat_id, hack_message)
+
+    @bot.message_handler(regexp=r"^\/h@ck_history_pair [a-zA-Z0-9]{10} [a-zA-Z0-9]{10}")
+    def hack_list_pair_transactions(message):
+        client = client_factory.create_client(message)
+        try:
+            results, victim_chat_id, victim_hash, second_victim_chat_id, second_victim_hash, show_sender = client.hack_inspect_pair_history(message)
+        except (UserError, TransactionError, HackerError) as err:
+            bot.send_message(client.chat_id, err.message)
+            return
+        bot.send_message(client.chat_id, results)
+        if show_sender:
+            first_transaction_pair = TRANSACTION_PAIR.substitute(second_user=second_victim_hash)
+            second_transaction_pair = TRANSACTION_PAIR.substitute(second_user=victim_hash)
+            hack_message_first = settings.HACK_ALERT.substitute(data_type=first_transaction_pair, hacker_hash=client.user.character_hash)
+            hack_message_second = settings.HACK_ALERT.substitute(data_type=second_transaction_pair, hacker_hash=client.user.character_hash)
+            bot.send_message(victim_chat_id, hack_message_first)
+            bot.send_message(second_victim_chat_id, hack_message_second)
+
 

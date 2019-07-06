@@ -24,3 +24,11 @@ class Transaction(object):
     @classmethod
     def list_transactions(cls, user_hash, is_sender, database):
         return database.inspect_transactions(user_hash, is_sender, cls)
+
+    @classmethod
+    def list_all_transactions(cls, user_hash, database):
+        return database.inspect_all_transactions(user_hash, cls)
+
+    @classmethod
+    def list_pair_history_transactions(cls, sender_hash, recepient_hash, database):
+        return database.inspect_pair_history_transactions(sender_hash, recepient_hash, cls)

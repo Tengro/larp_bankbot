@@ -72,3 +72,17 @@ def test_update_db_value(database):
     user_data = User.get_user_by_user_hash(character_hash, database)
     assert user_data is not None 
     assert user_data.finances == DEFAULT_FINANCES + 1
+
+def test_get_admin_list(database):
+    admin_list = User.get_admin_list(database)
+    assert len(admin_list) == 0
+    User.create_admin(1, 1, database)
+    admin_list = User.get_admin_list(database)
+    assert len(admin_list) == 1
+    character_hash = User.create_user(2, 2, "Test user", database)
+    admin_list = User.get_admin_list(database)
+    assert len(admin_list) == 1
+    user_data = User.get_user_by_user_hash(character_hash, database)
+    User.update_db_value(character_hash, "is_admin", 1, database)
+    admin_list = User.get_admin_list(database)
+    assert len(admin_list) == 2

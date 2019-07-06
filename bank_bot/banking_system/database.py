@@ -126,6 +126,21 @@ class Database(object):
             all_users.append(klass(*user_data))
         return all_users
 
+    def get_admin_list(self, klass):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        user_data = cursor.execute(
+            """
+            SELECT * from users WHERE is_admin=1 ORDER BY created 
+            """,
+        )
+        all_user_data = user_data.fetchall()
+        conn.close()
+        all_users = []
+        for user_data in all_user_data:
+            all_users.append(klass(*user_data))
+        return all_users
+
     def create_transaction(self, sender_hash, recepient_hash, amount):
         transaction_hash = md5((sender_hash + recepient_hash).encode()).hexdigest()[:15]
         created = datetime.now().strftime(DATETIME_FORMAT)
@@ -152,6 +167,38 @@ class Database(object):
             SELECT * from transactions WHERE {}=? ORDER BY created_time
             """.format(search_term),
             (user_hash,)
+        )
+        transaction_data = transaction_data.fetchall()
+        conn.close()
+        transactions = []
+        for transaction in transaction_data:
+            transactions.append(klass(*transaction))
+        return transactions    
+
+    def inspect_all_transactions(self, user_hash, klass):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        transaction_data = cursor.execute(
+            """
+            SELECT * from transactions WHERE sender_hash=? OR recepient_hash=? ORDER BY created_time
+            """,
+            (user_hash,user_hash)
+        )
+        transaction_data = transaction_data.fetchall()
+        conn.close()
+        transactions = []
+        for transaction in transaction_data:
+            transactions.append(klass(*transaction))
+        return transactions    
+
+    def inspect_pair_history_transactions(self, sender_hash, recepient_hash, klass):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        transaction_data = cursor.execute(
+            """
+            SELECT * from transactions WHERE sender_hash IN (?,?) AND recepient_hash IN (?,?) ORDER BY created_time
+            """,
+            (sender_hash, recepient_hash, sender_hash, recepient_hash)
         )
         transaction_data = transaction_data.fetchall()
         conn.close()

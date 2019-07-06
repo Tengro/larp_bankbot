@@ -32,6 +32,10 @@ class User(object):
             return cls(*user_data)
 
     @classmethod
+    def get_admin_list(cls, database):
+        return database.get_admin_list(cls)
+
+    @classmethod
     def get_user_by_name(cls, user_name, database):
         user_data = database.get_user('character_name', user_name)
         if user_data is None:
