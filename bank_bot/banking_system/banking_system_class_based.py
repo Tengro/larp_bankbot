@@ -17,11 +17,17 @@ from bank_bot.banking_system.transaction_class import Transaction
 from bank_bot.banking_system.message_class import Message
 from bank_bot.banking_system.address_record_class import AddressRecord
 from bank_bot.banking_system.exceptions import TransactionError, UserError, HackerError, MessageError, AddressRecordError
+from bank_bot.banking_system.csv_parsers import mass_set_character_csv, mass_set_contact_csv
+
 
 class BankingClient(object):
     def __init__(self, message, database):
-        self.user_id = str(message.json['from']['id'])
-        self.chat_id = str(message.json['chat']['id'])
+        if hasattr(message, 'json'):
+            self.user_id = str(message.json['from']['id'])
+            self.chat_id = str(message.json['chat']['id'])
+        else:
+            self.user_id = None
+            self.chat_id = None            
         self.database = database
         self.user = self.get_user_by_id(self.user_id)
 
@@ -183,6 +189,20 @@ class BankingClient(object):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
         return self.inspect_contact_list(target_user_hash)
+
+    def admin_mass_set_character_csv(self, document):
+        self.admin_validation()
+        good_result_counter, total_result_counter, error_list = mass_set_character_csv(document, self.database)
+        error_list_formatted = '\n'.join(error_list)
+        results = f"OK: {good_result_counter} of {total_result_counter}; errors:\n {error_list_formatted}"
+        return results
+
+    def admin_mass_set_contact_csv(self, document):
+        self.admin_validation()
+        results = mass_set_contact_csv(document, self.database)
+        error_list_formatted = '\n'.join(error_list)
+        results = f"OK: {good_result_counter} of {total_result_counter}; errors:\n {error_list_formatted}"
+        return results
 
 # USER FUNCTIONALITY
     def inspect_self(self):

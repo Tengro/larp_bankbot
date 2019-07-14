@@ -7,7 +7,7 @@ if __name__ == "__main__":
         try:
             bot.polling()
         except Exception as e:
-            client = client_factory.create_alert_client("")
+            client = client_factory.create_client("")
             admin_list = client.get_admins()
             for admin in admin_list:
                 bot.send_message(admin.chat_id, e)

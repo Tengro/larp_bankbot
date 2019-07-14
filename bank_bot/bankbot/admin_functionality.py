@@ -180,3 +180,43 @@ def admin_inspect_contact_list(message):
         bot.send_message(client.chat_id, err.message)
         return
     bot.send_message(client.chat_id, results)
+
+@bot.message_handler(regexp=r"^\/admin_inspect_contact_list [a-zA-Z0-9]{10}")
+def admin_inspect_contact_list(message):
+    client = client_factory.create_client(message)
+    try:
+        results = client.admin_inspect_contact_list(message.text)
+    except (UserError, AddressRecordError,) as err:
+        bot.send_message(client.chat_id, err.message)
+        return
+    bot.send_message(client.chat_id, results)
+
+@bot.message_handler(
+    func=lambda message: message.document.mime_type == 'text/csv' and message.caption.startswith("/admin_mass_character_csv"),
+    content_types=['document']
+)
+def admin_mass_set_character_csv(message):
+    client = client_factory.create_client(message)
+    try:
+        file_info = bot.get_file(message.document.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        results = client.admin_mass_set_character_csv(downloaded_file)
+    except UserError as err:
+        bot.send_message(client.chat_id, err.message)
+        return
+    bot.send_message(client.chat_id, results)
+
+@bot.message_handler(
+    func=lambda message: message.document.mime_type == 'text/csv' and message.caption.startswith("/admin_mass_contact_csv"),
+    content_types=['document']
+)
+def admin_mass_set_contact_csv(message):
+    client = client_factory.create_client(message)
+    try:
+        file_info = bot.get_file(message.document.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        results = client.admin_mass_set_contact_csv(message.document)
+    except (UserError, AddressRecordError,) as err:
+        bot.send_message(client.chat_id, err.message)
+        return
+    bot.send_message(client.chat_id, results)
