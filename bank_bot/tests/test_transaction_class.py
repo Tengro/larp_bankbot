@@ -1,4 +1,3 @@
-import sqlite3
 from bank_bot.banking_system.user_class import User
 from bank_bot.banking_system.transaction_class import Transaction
 from bank_bot.settings import DEFAULT_FINANCES

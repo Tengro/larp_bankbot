@@ -7,12 +7,16 @@ from bank_bot.settings import (
     DELETION_MESSAGE, TRANSACTION_NO_FINANCES, TRANSACTION_MESSAGE,
     NO_TRANSACTIONS_FOUND, ATTRIBUTE_UPDATE_MESSAGE,
     ALREADY_HAVE_USER,ZERO_TRANSACTION, SELF_TRANSACTION, TRANSACTION_UNALLOWED_VALUE,
-    HACKER_TOO_PROTECTED
+    HACKER_TOO_PROTECTED, HACKING_ALLOWED, NO_HACKING_ALLOWED_ERROR, NO_MESSAGES_FOUND,
+    NO_ADDRESS_RECORDS, NO_SELF_MESSAGING, NO_SELF_ADDRESSING, ADDRESS_RECORD_ADDED,
+    ADDRESS_RECORD_DELETION_MESSAGE, NO_DUPLICATES
 )
 
 from bank_bot.banking_system.user_class import User
 from bank_bot.banking_system.transaction_class import Transaction
-from bank_bot.banking_system.exceptions import TransactionError, UserError, HackerError
+from bank_bot.banking_system.message_class import Message
+from bank_bot.banking_system.address_record_class import AddressRecord
+from bank_bot.banking_system.exceptions import TransactionError, UserError, HackerError, MessageError, AddressRecordError
 
 class BankingClient(object):
     def __init__(self, message, database):
@@ -21,6 +25,8 @@ class BankingClient(object):
         self.database = database
         self.user = self.get_user_by_id(self.user_id)
 
+
+# COMMON FUNCTIONALITY
     def get_user_by_id(self, user_id):
         user = User.get_user_by_id(user_id, self.database)
         return user
@@ -28,7 +34,6 @@ class BankingClient(object):
     def get_user_by_name(self, user_name):
         user = User.get_user_by_name(user_name, self.database)
         return user
-
 
     def get_user_by_user_hash(self, character_hash):
         user = User.get_user_by_user_hash(character_hash, self.database)
@@ -40,14 +45,6 @@ class BankingClient(object):
         admin_list = User.get_admin_list(self.database)
         return admin_list
 
-    def admin_hail_users(self, message):
-        self.admin_validation()
-        message = re.search(r" [\w\W]+$", message).group(0).strip(' ')
-        all_users = User.inspect_all_users(self.database)
-        MessageData = namedtuple("MessageData", "chat_id,message")
-        resulting_list = [MessageData._make([user.chat_id, message]) for user in all_users if user.is_admin == 0]
-        return resulting_list
-
     def admin_validation(self):
         self.user_validation()
         if not self.user.is_admin:
@@ -58,15 +55,138 @@ class BankingClient(object):
             raise UserError(NO_USER_ERROR)
 
     def hacker_validation(self, hacker_defence=0):
+        if not HACKING_ALLOWED:
+            raise HackerError(NO_HACKING_ALLOWED_ERROR)
         self.user_validation()
         if self.user.hacker_level < hacker_defence or self.user.hacker_level == 0:
             raise HackerError(HACKER_TOO_PROTECTED)
 
+    def inspect_user(self, user_hash=None):
+        self.user_validation()
+        if user_hash is None:
+            user_hash = self.user.character_hash
+        user = self.get_user_by_user_hash(user_hash)
+        return str(user)
+
+# ADMIN FUNCTIONALITY
     def create_admin(self):
         if self.user is not None:
             raise UserError(ALREADY_ADMIN)
         user = User.create_admin(self.user_id, self.chat_id, self.database)
         return ADMIN_RECORD_CREATED
+
+    def admin_hail_users(self, message):
+        self.admin_validation()
+        message = re.search(r" [\w\W]+$", message).group(0).strip(' ')
+        all_users = User.inspect_all_users(self.database)
+        MessageData = namedtuple("MessageData", "chat_id,message")
+        resulting_list = [MessageData._make([user.chat_id, message]) for user in all_users if user.is_admin == 0]
+        return resulting_list
+
+    def inspect_all_users(self):
+        self.admin_validation()
+        all_users = User.inspect_all_users(self.database)
+        resulting_data = ""
+        for user in all_users:
+            resulting_data += str(user) + '\n\n'
+        return resulting_data
+
+    def set_attribute(self, message):
+        self.admin_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        target_attribute = re.search(r"(finances|hacker_level|hacker_defence|is_admin)", message).group(0)
+        target_value = int(re.search(r"[0-9]+$",message).group(0))
+        User.update_db_value(target_user_hash, target_attribute, target_value, self.database)
+        return ATTRIBUTE_UPDATE_MESSAGE
+
+    def delete_user(self, message_text):
+        self.admin_validation()
+        target_user_hash = message_text.strip('/delete ')
+        user = User.delete_by_hash(target_user_hash, self.database)
+        return DELETION_MESSAGE.substitute(character_hash=target_user_hash)
+
+    def admin_inspect_user(self, message):
+        self.admin_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        resulting_data = self.inspect_user(target_user_hash)
+        return resulting_data
+
+    def admin_inspect_pair_history(self, message):
+        self.admin_validation()
+        target_first_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
+        target_second_user_hash = re.search(r" [a-zA-Z0-9]{10}$", message).group(0).strip(' ')
+        resulting_data = self.inspect_pair_history(message, target_first_user_hash, target_second_user_hash)
+        return resulting_data
+
+    def admin_inspect_all_transactions(self, message):
+        self.admin_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        resulting_data = self.inspect_all_transactions(target_user_hash)
+        return resulting_data
+        
+    def admin_inspect_transactions(self, message, is_sender):
+        self.admin_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        resulting_data = self.inspect_transactions(is_sender, target_user_hash)
+        return resulting_data
+
+    def admin_inspect_messages(self, message, is_sender):
+        self.admin_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        resulting_data = self.inspect_messages(is_sender, target_user_hash)
+        return resulting_data
+
+    def admin_inspect_all_messages(self, message):
+        self.admin_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        resulting_data = self.inspect_all_messages(target_user_hash)
+        return resulting_data
+
+    def admin_inspect_pair_history_messages(self, message, sender_hash=None, reciever_hash=None):
+        self.admin_validation()
+        target_first_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
+        target_second_user_hash = re.search(r" [a-zA-Z0-9]{10}$", message).group(0).strip(' ')
+        resulting_data = self.inspect_pair_history_messages(message, target_first_user_hash, target_second_user_hash)
+        return resulting_data
+
+    def admin_add_contact(self, message, owner_hash=None):
+        self.admin_validation()
+        target_hashes = re.findall(r"[a-zA-Z0-9]{10}", message)
+        target_first_user_hash = target_hashes[0]
+        target_second_user_hash = target_hashes[1]
+        first_target_user = self.get_user_by_user_hash(target_first_user_hash)
+        second_target_user = self.get_user_by_user_hash(target_second_user_hash)
+        target_user_name = re.search(r"[a-zA-Z0-9]{10} [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[22:]
+        address_records = AddressRecord.list_address_records(target_first_user_hash, self.database)
+        existing_records = [x.target_hash for x in address_records]
+        if target_second_user_hash == target_first_user_hash:
+            raise AddressRecordError(NO_SELF_ADDRESSING)
+        if target_second_user_hash in existing_records:
+            raise AddressRecordError(NO_DUPLICATES)
+        AddressRecord.create_address_record(target_first_user_hash, target_second_user_hash, target_user_name, self.database)
+        return ADDRESS_RECORD_ADDED
+
+    def admin_delete_contact(self, message, user_hash=None):
+        self.admin_validation()
+        target_hashes = re.findall(r"[a-zA-Z0-9]{10}", message)
+        target_first_user_hash = target_hashes[0]
+        target_second_user_hash = target_hashes[1]
+        first_target_user = self.get_user_by_user_hash(target_first_user_hash)
+        second_target_user = self.get_user_by_user_hash(target_second_user_hash)
+        AddressRecord.delete_address_record(target_first_user_hash, target_second_user_hash, self.database)
+        return ADDRESS_RECORD_DELETION_MESSAGE
+
+    def admin_inspect_contact_list(self, message):
+        self.admin_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        return self.inspect_contact_list(target_user_hash)
+
+# USER FUNCTIONALITY
+    def inspect_self(self):
+        return self.inspect_user()
 
     def register_user(self, message_text):
         if self.user is not None:
@@ -80,60 +200,6 @@ class BankingClient(object):
             raise UserError(ALREADY_HAVE_USER)
         character_hash = User.create_user(self.user_id, self.chat_id, character_name, self.database)
         return REGISTRATION_MESSAGE.substitute(character_name=character_name, character_hash=character_hash)
-
-    def delete_user(self, message_text):
-        self.admin_validation()
-        target_user_hash = message_text.strip('/delete ')
-        user = User.delete_by_hash(target_user_hash, self.database)
-        return DELETION_MESSAGE.substitute(character_hash=target_user_hash)
-        
-    def inspect_all_users(self):
-        self.admin_validation()
-        all_users = User.inspect_all_users(self.database)
-        resulting_data = ""
-        for user in all_users:
-            resulting_data += str(user) + '\n\n'
-        return resulting_data
-
-    def inspect_self(self):
-        return self.inspect_user()
-
-    def inspect_user(self, user_hash=None):
-        self.user_validation()
-        if user_hash is None:
-            user_hash = self.user.character_hash
-        user = self.get_user_by_user_hash(user_hash)
-        return str(user)
-
-    def hack_inspect_user(self, message):
-        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
-        target_user = self.get_user_by_user_hash(target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
-        resulting_data = self.inspect_user(target_user_hash)
-        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
-
-    def prepare_message(self, message):
-        self.user_validation()
-        target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
-        message = re.search(r" [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[12:]
-        target_user = self.get_user_by_user_hash(target_user_hash)
-        return target_user.chat_id, message
-
-    def prepare_hacker_message(self, message):
-        target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
-        message = re.search(r" [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[12:]
-        target_user = self.get_user_by_user_hash(target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
-        return target_user.chat_id, message, self.user.hacker_level == target_user.hacker_defence
-
-    def set_attribute(self, message):
-        self.admin_validation()
-        target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
-        target_user = self.get_user_by_user_hash(target_user_hash)
-        target_attribute = re.search(r"(finances|hacker_level|hacker_defence|is_admin)", message).group(0)
-        target_value = int(re.search(r"[0-9]+$",message).group(0))
-        User.update_db_value(target_user_hash, target_attribute, target_value, self.database)
-        return ATTRIBUTE_UPDATE_MESSAGE
 
     def create_transaction(self, message):
         self.user_validation()
@@ -172,16 +238,9 @@ class BankingClient(object):
         resulting_data = ""
         for transaction in transactions:
             resulting_data += str(transaction) + '\n\n'
-        if not resulting_data:
+        if not transactions:
             resulting_data = NO_TRANSACTIONS_FOUND
         return resulting_data
-
-    def hack_inspect_transactions(self, message, is_sender):
-        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
-        target_user = self.get_user_by_user_hash(target_user_hash)
-        resulting_data = self.inspect_transactions(is_sender, target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
-        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
 
     def inspect_all_transactions(self, user_hash=None):
         self.user_validation()
@@ -191,11 +250,12 @@ class BankingClient(object):
         resulting_data = ""
         for transaction in transactions:
             resulting_data += str(transaction) + '\n\n'
-        if not resulting_data:
+        if not transactions:
             resulting_data = NO_TRANSACTIONS_FOUND
         return resulting_data
 
     def inspect_pair_history(self, message, sender_hash=None, reciever_hash=None):
+        self.user_validation()
         if sender_hash is None:
             sender_hash = self.user.character_hash
         if reciever_hash is None:
@@ -204,9 +264,111 @@ class BankingClient(object):
         resulting_data = ""
         for transaction in transactions:
             resulting_data += str(transaction) + '\n\n'
-        if not resulting_data:
+        if not transactions:
             resulting_data = NO_TRANSACTIONS_FOUND
         return resulting_data
+
+# MESSAGING FUNCTIONALITY
+    def prepare_message(self, message):
+        self.user_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
+        message = re.search(r" [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[12:]
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        if target_user_hash == self.user.character_hash:
+            raise MessageError(NO_SELF_MESSAGING)
+        Message.create_message(self.user.character_hash, target_user_hash, message, self.database)
+        return target_user.chat_id, message
+
+    def inspect_messages(self, is_sender, user_hash=None):
+        self.user_validation()
+        if user_hash is None:
+            user_hash = self.user.character_hash
+        messages = Message.inspect_messages(user_hash, is_sender, self.database)
+        resulting_data = ""
+        for message in messages:
+            resulting_data += str(message) + '\n'
+        if not messages:
+            resulting_data = NO_MESSAGES_FOUND
+        return resulting_data
+
+    def inspect_all_messages(self, user_hash=None):
+        self.user_validation()
+        if user_hash is None:
+            user_hash = self.user.character_hash
+        messages = Message.inspect_all_messages(user_hash, self.database)
+        resulting_data = ""
+        for message in messages:
+            resulting_data += str(message) + '\n'
+        if not messages:
+            resulting_data = NO_MESSAGES_FOUND
+        return resulting_data
+
+    def inspect_pair_history_messages(self, message, sender_hash=None, reciever_hash=None):
+        self.user_validation()
+        if sender_hash is None:
+            sender_hash = self.user.character_hash
+        if reciever_hash is None:
+            reciever_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        messages = Message.inspect_pair_history_messages(sender_hash, reciever_hash, self.database)
+        resulting_data = ""
+        for message in messages:
+            resulting_data += str(message) + '\n\n'
+        if not messages:
+            resulting_data = NO_MESSAGES_FOUND
+        return resulting_data
+
+#CONTACT LIST FUNCTIONALITY
+    def add_contact(self, message, owner_hash=None):
+        self.user_validation()
+        if owner_hash is None:
+            owner_hash = self.user.character_hash
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user_name = re.search(r" [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[12:]
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        address_records = AddressRecord.list_address_records(owner_hash, self.database)
+        existing_records = [x.target_hash for x in address_records]
+        if target_user_hash == owner_hash:
+            raise AddressRecordError(NO_SELF_ADDRESSING)
+        if target_user_hash in existing_records:
+            raise AddressRecordError(NO_DUPLICATES)
+        AddressRecord.create_address_record(owner_hash, target_user_hash, target_user_name, self.database)
+        return ADDRESS_RECORD_ADDED
+
+    def delete_contact(self, message, user_hash=None):
+        self.user_validation()
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        if user_hash is None:
+            user_hash = self.user.character_hash
+        AddressRecord.delete_address_record(user_hash, target_user_hash, self.database)
+        return ADDRESS_RECORD_DELETION_MESSAGE
+
+    def inspect_contact_list(self, user_hash=None):
+        self.user_validation()
+        if user_hash is None:
+            user_hash = self.user.character_hash
+        address_records = AddressRecord.list_address_records(user_hash, self.database)
+        resulting_data = ""
+        for address_record in address_records:
+            resulting_data += str(address_record) + '\n'
+        if not address_records:
+            resulting_data = NO_ADDRESS_RECORDS
+        return resulting_data
+
+# HACKER FUNCTIONALITY
+    def hack_inspect_user(self, message):
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        self.hacker_validation(target_user.hacker_defence)
+        resulting_data = self.inspect_user(target_user_hash)
+        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
+
+    def hack_inspect_transactions(self, message, is_sender):
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        resulting_data = self.inspect_transactions(is_sender, target_user_hash)
+        self.hacker_validation(target_user.hacker_defence)
+        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
 
     def hack_inspect_pair_history(self, message):
         target_first_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
@@ -225,3 +387,29 @@ class BankingClient(object):
         self.hacker_validation(target_user.hacker_defence)
         resulting_data = self.inspect_all_transactions(target_user_hash)
         return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
+
+    def hack_inspect_messages(self, message, is_sender):
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        resulting_data = self.inspect_messages(is_sender, target_user_hash)
+        self.hacker_validation(target_user.hacker_defence)
+        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
+
+    def hack_inspect_pair_history_messages(self, message):
+        target_first_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
+        target_second_user_hash = re.search(r" [a-zA-Z0-9]{10}$", message).group(0).strip(' ')
+        first_target_user = self.get_user_by_user_hash(target_first_user_hash)
+        second_target_user = self.get_user_by_user_hash(target_second_user_hash)
+        lesser_defence = min(first_target_user.hacker_defence, second_target_user.hacker_defence)
+        self.hacker_validation(lesser_defence)
+        resulting_data = self.inspect_pair_history_messages(message, target_first_user_hash, target_second_user_hash)
+        show_hack = self.user.hacker_level == lesser_defence
+        return resulting_data, first_target_user.chat_id, target_first_user_hash,  second_target_user.chat_id, target_second_user_hash, show_hack
+
+    def hack_inspect_all_messages(self, message):
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        self.hacker_validation(target_user.hacker_defence)
+        resulting_data = self.inspect_all_messages(target_user_hash)
+        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
+

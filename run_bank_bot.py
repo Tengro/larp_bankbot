@@ -1,15 +1,16 @@
 #!/usr/bin/env python
-from bank_bot.bankbot import bot
+from bank_bot.bankbot import bot, client_factory
 import time
 
 if __name__ == "__main__":
-    keyboard_interrupt = False
-    while not keyboard_interrupt:
+    while True:
         try:
             bot.polling()
-        except KeyboardInterrupt:
-            keyboard_interrupt = True
         except Exception as e:
-            time.sleep(2)
+            client = client_factory.create_alert_client("")
+            admin_list = client.get_admins()
+            for admin in admin_list:
+                bot.send_message(admin.chat_id, e)
+            time.sleep(5)
             print(e)
             pass

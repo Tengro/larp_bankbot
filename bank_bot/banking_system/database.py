@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import datetime
-from hashlib import md5
+from hashlib import sha256
 from bank_bot.settings import DEFAULT_FINANCES, DATETIME_FORMAT
 
 class Database(object):
@@ -25,6 +25,19 @@ class Database(object):
             CREATE TABLE IF NOT EXISTS transactions (
                 sender_hash text, recepient_hash text, amount real, 
                 transaction_hash text, created_time text
+            );
+            """
+        )
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                sender_hash text, recepient_hash text, message_text text,
+                created_time text
+            );
+            """
+        )
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS address_records (
+                owner_hash text, target_hash text, target_name text
             );
             """
         )
@@ -73,7 +86,7 @@ class Database(object):
         conn.close()
 
     def create_user(self, user_id, chat_id, character_name):
-        character_hash = str(md5(character_name.encode()).hexdigest()[:10])
+        character_hash = str(abs(int(sha256(character_name.encode('utf-8')).hexdigest(), 16)))[:10]
         created = datetime.now().strftime(DATETIME_FORMAT)
 
         conn = sqlite3.connect(self.database_file)
@@ -142,7 +155,7 @@ class Database(object):
         return all_users
 
     def create_transaction(self, sender_hash, recepient_hash, amount):
-        transaction_hash = md5((sender_hash + recepient_hash).encode()).hexdigest()[:15]
+        transaction_hash = str(abs(int(sha256((sender_hash + recepient_hash).encode('utf-8')).hexdigest(), 16)))[:15]
         created = datetime.now().strftime(DATETIME_FORMAT)
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
@@ -205,4 +218,111 @@ class Database(object):
         transactions = []
         for transaction in transaction_data:
             transactions.append(klass(*transaction))
-        return transactions    
+        return transactions
+
+    def create_message(self, sender_hash, recepient_hash, message_text):
+        created = datetime.now().strftime(DATETIME_FORMAT)
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO messages VALUES(?, ?, ?, ?)
+            """,
+            (
+                sender_hash, recepient_hash, message_text, created,
+            )
+        )
+        conn.commit()
+        conn.close()
+
+    def inspect_messages(self, user_hash, is_sender, klass):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        search_term = 'sender_hash' if is_sender else 'recepient_hash'
+        messages_data = cursor.execute(
+            """
+            SELECT * from messages WHERE {}=? ORDER BY created_time
+            """.format(search_term),
+            (user_hash,)
+        )
+        messages_data = messages_data.fetchall()
+        conn.close()
+        messages = []
+        for message in messages_data:
+            messages.append(klass(*message))
+        return messages    
+
+    def inspect_all_messages(self, user_hash, klass):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        messages_data = cursor.execute(
+            """
+            SELECT * from messages WHERE sender_hash=? OR recepient_hash=? ORDER BY created_time
+            """,
+            (user_hash,user_hash)
+        )
+        messages_data = messages_data.fetchall()
+        conn.close()
+        messages = []
+        for message in messages_data:
+            messages.append(klass(*message))
+        return messages   
+
+    def inspect_pair_history_messages(self, sender_hash, recepient_hash, klass):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        messages_data = cursor.execute(
+            """
+            SELECT * from messages WHERE sender_hash IN (?,?) AND recepient_hash IN (?,?) ORDER BY created_time
+            """,
+            (sender_hash, recepient_hash, sender_hash, recepient_hash)
+        )
+        messages_data = messages_data.fetchall()
+        conn.close()
+        messages = []
+        for message in messages_data:
+            messages.append(klass(*message))
+        return messages
+
+    def create_address_record(self, owner_hash, target_hash, target_name):
+        created = datetime.now().strftime(DATETIME_FORMAT)
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO address_records VALUES(?, ?, ?)
+            """,
+            (
+                owner_hash, target_hash, target_name,
+            )
+        )
+        conn.commit()
+        conn.close()
+
+    def inspect_address_records(self, owner_hash, klass):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        address_records_data = cursor.execute(
+            """
+            SELECT * from address_records WHERE owner_hash=?
+            """,
+            (owner_hash,)
+        )
+        address_records_data = address_records_data.fetchall()
+        conn.close()
+        address_records = []
+        for address_record in address_records_data:
+            address_records.append(klass(*address_record))
+        return address_records    
+
+    def delete_address_record(self, owner_hash, target_hash):
+        conn = sqlite3.connect(self.database_file)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            DELETE FROM address_records WHERE owner_hash=? AND target_hash=?
+            """,
+            (owner_hash, target_hash,)
+        )
+        conn.commit()
+        conn.close()

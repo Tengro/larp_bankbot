@@ -1,5 +1,5 @@
 import sqlite3
-from bank_bot.settings import DATABASE_FILE, USER_MODEL_DATA
+from bank_bot.settings import USER_MODEL_DATA, HACKING_ALLOWED
 
 class User(object):
     def __init__(
@@ -17,11 +17,16 @@ class User(object):
         self.is_admin = is_admin
 
     def __str__(self):
+        if HACKING_ALLOWED:
+            return USER_MODEL_DATA.substitute(
+                character_name=self.character_name, character_hash=self.character_hash,
+                finances=self.finances, created=self.created, hack_level=self.hacker_level,
+                defence_level=self.hacker_defence
+            )
         return USER_MODEL_DATA.substitute(
-            character_name=self.character_name, character_hash=self.character_hash,
-            finances=self.finances, created=self.created, hack_level=self.hacker_level,
-            defence_level=self.hacker_defence
-        )
+                character_name=self.character_name, character_hash=self.character_hash,
+                finances=self.finances, created=self.created,
+            )
 
     @classmethod
     def get_user_by_id(cls, user_id, database):
@@ -60,13 +65,13 @@ class User(object):
         return database.inspect_all_users(cls)
 
     @classmethod
-    def create_admin(self, user_id, chat_id, database):
+    def create_admin(cls, user_id, chat_id, database):
         database.create_admin(user_id, chat_id)
 
     @classmethod
-    def create_user(self, user_id, chat_id, character_name, database):
+    def create_user(cls, user_id, chat_id, character_name, database):
         return database.create_user(user_id, chat_id, character_name)
 
     @classmethod
-    def update_db_value(self, user_hash, field_name, value, database):
+    def update_db_value(cls, user_hash, field_name, value, database):
         database.update_user_value(user_hash, field_name, value)

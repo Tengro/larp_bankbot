@@ -1,5 +1,5 @@
 import sqlite3
-from bank_bot.settings import DATABASE_FILE, DATETIME_FORMAT, TRANSACTION_MODEL_DATA
+from bank_bot.settings import TRANSACTION_MODEL_DATA
 
 class Transaction(object):
     def __init__(
@@ -18,7 +18,7 @@ class Transaction(object):
         )
         
     @classmethod
-    def create_transaction(self, sender_hash, recepient_hash, amount, database):
+    def create_transaction(cls, sender_hash, recepient_hash, amount, database):
         return database.create_transaction(sender_hash, recepient_hash, amount)
 
     @classmethod
