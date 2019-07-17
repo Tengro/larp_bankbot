@@ -6,11 +6,11 @@ if getattr(sys, 'frozen', False):
     # If the application is run as a bundle, the pyInstaller bootloader
     # extends the sys module by a flag frozen=True and sets the app 
     # path into variable _MEIPASS'.
-    application_path = sys._MEIPASS
+    application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.split(os.path.abspath(__file__))[0])
 my_config_parser = configparser.SafeConfigParser()
-my_config_parser.read(application_path + '/config.cfg')
+my_config_parser.read(application_path + '/config.ini', encoding='utf-8')
 
 ### Службові налаштування ###
 BOT_TOKEN = my_config_parser.get("BOT_CONFIG", "BOT_TOKEN") # Токен бота. Необхідно вказати для роботи
