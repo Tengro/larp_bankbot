@@ -192,7 +192,7 @@ def admin_inspect_contact_list(message):
     bot.send_message(client.chat_id, results)
 
 @bot.message_handler(
-    func=lambda message: message.document.mime_type == 'text/csv' and message.caption.startswith("/admin_mass_character_csv"),
+    func=lambda message: message.document is not None and message.document.mime_type == 'text/csv' and message.caption.startswith("/admin_mass_character_csv"),
     content_types=['document']
 )
 def admin_mass_set_character_csv(message):
@@ -207,7 +207,7 @@ def admin_mass_set_character_csv(message):
     bot.send_message(client.chat_id, results)
 
 @bot.message_handler(
-    func=lambda message: message.document.mime_type == 'text/csv' and message.caption.startswith("/admin_mass_contact_csv"),
+    func=lambda message: message.document is not None and message.document.mime_type == 'text/csv' and message.caption.startswith("/admin_mass_contact_csv"),
     content_types=['document']
 )
 def admin_mass_set_contact_csv(message):
