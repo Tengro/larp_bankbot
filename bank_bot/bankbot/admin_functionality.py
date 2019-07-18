@@ -181,15 +181,6 @@ def admin_inspect_contact_list(message):
         return
     bot.send_message(client.chat_id, results)
 
-@bot.message_handler(regexp=r"^\/admin_inspect_contact_list [a-zA-Z0-9]{10}")
-def admin_inspect_contact_list(message):
-    client = client_factory.create_client(message)
-    try:
-        results = client.admin_inspect_contact_list(message.text)
-    except (UserError, AddressRecordError,) as err:
-        bot.send_message(client.chat_id, err.message)
-        return
-    bot.send_message(client.chat_id, results)
 
 @bot.message_handler(
     func=lambda message: message.document is not None and message.document.mime_type == 'text/csv' and message.caption.startswith("/admin_mass_character_csv"),

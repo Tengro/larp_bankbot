@@ -11,8 +11,9 @@ def hacker_help_message(message):
         client.hacker_validation()
         bot.reply_to(message, settings.HACKER_HELP_MESSAGE)
         return
-    except UserError as err:
+    except (UserError, HackerError) as err:
         bot.send_message(client.chat_id, err.message)
+        return
 
 if settings.HACKING_ALLOWED:
     @bot.message_handler(regexp=r"^\/h@ck_user [a-zA-Z0-9]{10}")

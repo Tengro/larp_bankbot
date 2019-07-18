@@ -26,7 +26,7 @@ def delete_contact(message):
 def inspect_contact_list(message):
     client = client_factory.create_client(message)
     try:
-        results = client.inspect_contact_list(message.text)
+        results = client.inspect_contact_list()
     except (UserError, AddressRecordError,) as err:
         bot.send_message(client.chat_id, err.message)
         return

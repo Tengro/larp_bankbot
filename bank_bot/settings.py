@@ -9,7 +9,7 @@ if getattr(sys, 'frozen', False):
     application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.split(os.path.abspath(__file__))[0])
-my_config_parser = configparser.SafeConfigParser()
+my_config_parser = configparser.ConfigParser()
 my_config_parser.read(application_path + '/config.ini', encoding='utf-8')
 
 ### Службові налаштування ###

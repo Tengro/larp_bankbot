@@ -47,7 +47,7 @@ def list_all_messages(message):
 def list_pair_messages(message):
     client = client_factory.create_client(message)
     try:
-        message = client.inspect_pair_history_messages(message=message)
+        message = client.inspect_pair_history_messages(message=message.text)
     except (UserError, MessageError) as err:
         message = err.message
     bot.send_message(client.chat_id, message)

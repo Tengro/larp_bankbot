@@ -3,7 +3,7 @@ from bank_bot.settings import MESSAGE_MODEL_DATA
 
 class Message(object):
     def __init__(
-        self, sender_hash, recepient_hash, message_text, message_hash, created_time=None
+        self, sender_hash, recepient_hash, message_text, created_time=None
     ):
         self.sender_hash = sender_hash
         self.recepient_hash = recepient_hash
