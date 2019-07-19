@@ -18,6 +18,8 @@ DATABASE_FILE =  my_config_parser.get("BOT_CONFIG", "DATABASE_FILE") # Адре�
 DATETIME_FORMAT = my_config_parser.get("BOT_CONFIG", "DATETIME_FORMAT") # Формат виведення дати та часу.
 HACKING_ALLOWED = my_config_parser.getboolean("BOT_CONFIG", "HACKING_ALLOWED") # Вказує, чи активний додатковий модуль "хакінгу". Вкажіть True для ввімкнення, False для вимкнення
 DEFAULT_FINANCES = my_config_parser.getfloat("BOT_CONFIG", "DEFAULT_FINANCES")
+TRANSACTION_DATETIME_FORMAT = my_config_parser.get("BOT_CONFIG", "TRANSACTION_DATETIME_FORMAT")
+MESSAGE_DATETIME_FORMAT = my_config_parser.get("BOT_CONFIG", "MESSAGE_DATETIME_FORMAT")
 
 ### Налаштування текстів службових повідомлень ###
 WELCOME_MESSAGE =  my_config_parser.get("BOT_HELP_WELCOME", "WELCOME_MESSAGE")
@@ -90,3 +92,4 @@ TRANSACTION_UNALLOWED_VALUE = Template(my_config_parser.get("BOT_TEMPLATE", "TRA
 TRANSACTION_PAIR = Template(my_config_parser.get("BOT_TEMPLATE", "TRANSACTION_PAIR"))
 MESSAGES_PAIR = Template(my_config_parser.get("BOT_TEMPLATE", "MESSAGES_PAIR"))
 HACK_THEFT_ALERT = Template(my_config_parser.get("BOT_TEMPLATE", "HACK_THEFT_ALERT"))
+USER_MODEL_DATA_HACK_ATTACK_RESULT = Template(my_config_parser.get("BOT_TEMPLATE", "USER_MODEL_DATA_HACK_ATTACK_RESULT"))
