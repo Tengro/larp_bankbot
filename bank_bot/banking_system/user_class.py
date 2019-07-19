@@ -1,5 +1,5 @@
 import sqlite3
-from bank_bot.settings import USER_MODEL_DATA, HACKING_ALLOWED
+from bank_bot.settings import USER_MODEL_DATA, HACKING_ALLOWED, USER_MODEL_DATA_HACK_ATTACK_RESULT
 
 class User(object):
     def __init__(
@@ -26,6 +26,13 @@ class User(object):
         return USER_MODEL_DATA.substitute(
                 character_name=self.character_name, character_hash=self.character_hash,
                 finances=self.finances, created=self.created,
+            )
+
+    @property    
+    def hack_result(self):
+        return USER_MODEL_DATA_HACK_ATTACK_RESULT.substitute(
+                character_name=self.character_name, character_hash=self.character_hash,
+                finances=self.finances, created=self.created, defence_level=self.hacker_defence
             )
 
     @classmethod

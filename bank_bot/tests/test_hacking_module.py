@@ -31,13 +31,13 @@ def test_hack_inspect_user(database, mock_message):
     with pytest.raises(UserError):
         client.hack_inspect_user("/hack 1234567890")
     resulting_data, chat_id, show_hack = client.hack_inspect_user(f'/hack {character_hash_2}')
-    assert resulting_data == str(user2)
+    assert resulting_data == user2.hack_result
     assert chat_id == user2.chat_id
     assert not show_hack
     with pytest.raises(HackerError):
         client.hack_inspect_user(f'/hack 0000000000')
     resulting_data, chat_id, show_hack = client.hack_inspect_user(f'/hack {character_hash_4}')
-    assert resulting_data == str(user4)
+    assert resulting_data == user4.hack_result
     assert chat_id == user4.chat_id
     assert show_hack
 

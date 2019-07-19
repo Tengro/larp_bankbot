@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime
 from hashlib import sha256
-from bank_bot.settings import DEFAULT_FINANCES, DATETIME_FORMAT
+from bank_bot.settings import DEFAULT_FINANCES, DATETIME_FORMAT, TRANSACTION_DATETIME_FORMAT, MESSAGE_DATETIME_FORMAT
 
 class Database(object):
     def __init__(self, file_path):
@@ -156,7 +156,7 @@ class Database(object):
 
     def create_transaction(self, sender_hash, recepient_hash, amount):
         transaction_hash = str(abs(int(sha256((sender_hash + recepient_hash).encode('utf-8')).hexdigest(), 16)))[:15]
-        created = datetime.now().strftime(DATETIME_FORMAT)
+        created = datetime.now().strftime(TRANSACTION_DATETIME_FORMAT)
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
         cursor.execute(
@@ -221,7 +221,7 @@ class Database(object):
         return transactions
 
     def create_message(self, sender_hash, recepient_hash, message_text):
-        created = datetime.now().strftime(DATETIME_FORMAT)
+        created = datetime.now().strftime(MESSAGE_DATETIME_FORMAT)
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
         cursor.execute(
@@ -285,7 +285,6 @@ class Database(object):
         return messages
 
     def create_address_record(self, owner_hash, target_hash, target_name):
-        created = datetime.now().strftime(DATETIME_FORMAT)
         conn = sqlite3.connect(self.database_file)
         cursor = conn.cursor()
         cursor.execute(

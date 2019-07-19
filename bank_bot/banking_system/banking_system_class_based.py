@@ -69,11 +69,13 @@ class BankingClient(object):
             raise HackerError(HACKER_TOO_PROTECTED)
         return self.user.hacker_level == hacker_defence
 
-    def inspect_user(self, user_hash=None):
+    def inspect_user(self, user_hash=None, is_hack_attack=False):
         self.user_validation()
         if user_hash is None:
             user_hash = self.user.character_hash
         user = self.get_user_by_user_hash(user_hash)
+        if is_hack_attack:
+            return user.hack_result
         return str(user)
 
 # ADMIN FUNCTIONALITY
@@ -382,7 +384,7 @@ class BankingClient(object):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
         show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_COMMON_DIFFICULTY)
-        resulting_data = self.inspect_user(target_user_hash)
+        resulting_data = self.inspect_user(target_user_hash, is_hack_attack=True)
         return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
 
     def hack_inspect_transactions(self, message, is_sender):
