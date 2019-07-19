@@ -61,12 +61,14 @@ class BankingClient(object):
         if self.user is None:
             raise UserError(NO_USER_ERROR)
 
-    def hacker_validation(self, hacker_defence=0):
+    def hacker_validation(self, hacker_defence=0, victim_chat_id=None):
         if not HACKING_ALLOWED:
             raise HackerError(NO_HACKING_ALLOWED_ERROR)
         self.user_validation()
-        if self.user.hacker_level < hacker_defence or self.user.hacker_level == 0:
-            raise HackerError(HACKER_TOO_PROTECTED)
+        if self.user.hacker_level == 0:
+            raise HackerError(HACKER_TOO_PROTECTED, low_level=False, victim_chat_id=None)
+        if self.user.hacker_level < hacker_defence:
+            raise HackerError(HACKER_TOO_PROTECTED, low_level=True, victim_chat_id=victim_chat_id)
         return self.user.hacker_level == hacker_defence
 
     def inspect_user(self, user_hash=None, is_hack_attack=False):
@@ -383,7 +385,7 @@ class BankingClient(object):
     def hack_inspect_user(self, message):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_COMMON_DIFFICULTY)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_COMMON_DIFFICULTY, target_user.chat_id)
         resulting_data = self.inspect_user(target_user_hash, is_hack_attack=True)
         return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
 
@@ -391,7 +393,7 @@ class BankingClient(object):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
         resulting_data = self.inspect_transactions(is_sender, target_user_hash)
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_TRANSACTION_DIFFICULTY)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_TRANSACTION_DIFFICULTY, target_user.chat_id)
         return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
 
     def hack_inspect_pair_history(self, message):
@@ -400,14 +402,14 @@ class BankingClient(object):
         first_target_user = self.get_user_by_user_hash(target_first_user_hash)
         second_target_user = self.get_user_by_user_hash(target_second_user_hash)
         lesser_defence = min(first_target_user.hacker_defence, second_target_user.hacker_defence)
-        show_hack = self.hacker_validation(lesser_defence + HACKER_TRANSACTION_DIFFICULTY)
+        show_hack = self.hacker_validation(lesser_defence + HACKER_TRANSACTION_DIFFICULTY, first_target_user.chat_id + '|||' + second_target_user.chat_id)
         resulting_data = self.inspect_pair_history(message, target_first_user_hash, target_second_user_hash)
         return resulting_data, first_target_user.chat_id, target_first_user_hash,  second_target_user.chat_id, target_second_user_hash, show_hack
 
     def hack_inspect_all_transactions(self, message):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_TRANSACTION_DIFFICULTY)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_TRANSACTION_DIFFICULTY, target_user.chat_id)
         resulting_data = self.inspect_all_transactions(target_user_hash)
         return resulting_data, target_user.chat_id, show_hack
 
@@ -415,7 +417,7 @@ class BankingClient(object):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
         resulting_data = self.inspect_messages(is_sender, target_user_hash)
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY, target_user.chat_id)
         return resulting_data, target_user.chat_id, show_hack
 
     def hack_inspect_pair_history_messages(self, message):
@@ -424,7 +426,7 @@ class BankingClient(object):
         first_target_user = self.get_user_by_user_hash(target_first_user_hash)
         second_target_user = self.get_user_by_user_hash(target_second_user_hash)
         lesser_defence = min(first_target_user.hacker_defence, second_target_user.hacker_defence)
-        show_hack = self.hacker_validation(lesser_defence + HACKER_MESSAGE_DIFFICULY)
+        show_hack = self.hacker_validation(lesser_defence + HACKER_MESSAGE_DIFFICULY, first_target_user.chat_id + '|||' + second_target_user.chat_id)
         resulting_data = self.inspect_pair_history_messages(message, target_first_user_hash, target_second_user_hash)
         return resulting_data, first_target_user.chat_id, target_first_user_hash,  second_target_user.chat_id, target_second_user_hash, show_hack
 
@@ -432,7 +434,7 @@ class BankingClient(object):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)     
         resulting_data = self.inspect_all_messages(target_user_hash)
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY, target_user.chat_id)
         return resulting_data, target_user.chat_id, show_hack
 
     def prepare_hacker_message(self, message):
@@ -442,7 +444,8 @@ class BankingClient(object):
         target_user = self.get_user_by_user_hash(target_user_hash)
         if target_user_hash == self.user.character_hash:
             raise MessageError(NO_SELF_MESSAGING)
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY)
+        self.hacker_validation(0)
+        show_hack =  self.user.hacker_level <= target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY
         if show_hack:
             Message.create_message(self.user.character_hash, target_user_hash, message, self.database)
         else:
@@ -455,7 +458,7 @@ class BankingClient(object):
         target_user = self.get_user_by_user_hash(target_user_hash)
         hacker_user = self.get_user_by_user_hash(self.user.character_hash)
         message = re.search(r" [a-zA-Z0-9]{10} [\w\W0-9.]+$", message).group(0)[12:].strip(' ')
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_THEFT_DIFFICULTY)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_THEFT_DIFFICULTY, target_user.chat_id)
         def allowed_values(message):
              return all([char.isdigit() or char == '.' for char in message])
         if not allowed_values(message):
@@ -493,7 +496,7 @@ class BankingClient(object):
         reciever_user = self.get_user_by_user_hash(target_second_user_hash)
 
         message = re.search(r" [a-zA-Z0-9]{10} [a-zA-Z0-9]{10} [\w\W0-9.]+$", message).group(0)[22:].strip(' ')
-        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_THEFT_DIFFICULTY)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_THEFT_DIFFICULTY, target_user.chat_id)
         def allowed_values(message):
              return all([char.isdigit() or char == '.' for char in message])
         if not allowed_values(message):

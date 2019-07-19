@@ -1,4 +1,4 @@
-from bank_bot.bankbot.core import bot, client_factory
+from bank_bot.bankbot.core import bot, client_factory, safe_send_message
 from bank_bot import settings
 from bank_bot.banking_system import UserError, TransactionError, Database, HackerError, MessageError, AddressRecordError
 
@@ -23,6 +23,9 @@ if settings.HACKING_ALLOWED:
             results, victim_chat_id, show_sender = client.hack_inspect_user(message.text)
         except (UserError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.FAILED_HACK_ALERT.substitute(data_type=settings.USER_DATA)
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
         bot.send_message(client.chat_id, results)
         if show_sender:
@@ -37,8 +40,11 @@ if settings.HACKING_ALLOWED:
             results, victim_chat_id, show_sender = client.hack_inspect_transactions(message.text, is_sender=True)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.FAILED_HACK_ALERT.substitute(data_type=settings.SENT_TRANSACTIONS_DATA)
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.SENT_TRANSACTIONS_DATA, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
@@ -50,8 +56,11 @@ if settings.HACKING_ALLOWED:
             results, victim_chat_id, show_sender = client.hack_inspect_transactions(message.text, is_sender=False)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.FAILED_HACK_ALERT.substitute(data_type=settings.RECIEVED_TRANSACTIONS_DATA)
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.RECIEVED_TRANSACTIONS_DATA, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
@@ -63,8 +72,11 @@ if settings.HACKING_ALLOWED:
             results, victim_chat_id, show_sender = client.hack_inspect_all_transactions(message.text)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.FAILED_HACK_ALERT.substitute(data_type=settings.USER_DATA)
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.TRANSACTIONS_DATA_HISTORY, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
@@ -76,8 +88,13 @@ if settings.HACKING_ALLOWED:
             results, victim_chat_id, victim_hash, second_victim_chat_id, second_victim_hash, show_sender = client.hack_inspect_pair_history(message.text)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                first_victim_chat_id, second_victim_chat_id = err.victim_chat_id.split('|||')
+                failed_hack_message_first = settings.FAILED_HACK_ALERT.substitute(data_type=settings.HACK_TRANSACTIONS_OTHER_USER)
+                bot.send_message(first_victim_chat_id, failed_hack_message)
+                bot.send_message(second_victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             first_transaction_pair = settings.TRANSACTION_PAIR.substitute(second_user=second_victim_hash)
             second_transaction_pair = settings.TRANSACTION_PAIR.substitute(second_user=victim_hash)
@@ -87,53 +104,67 @@ if settings.HACKING_ALLOWED:
             bot.send_message(second_victim_chat_id, hack_message_second)
 
     @bot.message_handler(regexp=r"^\/h@ck_history_messages_sent [a-zA-Z0-9]{10}")
-    def hack_user_sent_transaction_list(message):
+    def hack_user_sent_messages_list(message):
         client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_messages(message.text, is_sender=True)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.FAILED_HACK_ALERT.substitute(data_type=settings.SENT_MESSAGES_DATA)
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.SENT_MESSAGES_DATA, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
 
     @bot.message_handler(regexp=r"^\/h@ck_history_messages_recieved [a-zA-Z0-9]{10}")
-    def hack_user_recieved_transaction_list(message):
+    def hack_user_recieved_messages_list(message):
         client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_messages(message.text, is_sender=False)
         except (UserError, MessageError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.FAILED_HACK_ALERT.substitute(data_type=settings.SENT_MESSAGES_DATA)
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.RECIEVED_MESSAGES_DATA, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
 
     @bot.message_handler(regexp=r"^\/h@ck_history_messages [a-zA-Z0-9]{10}")
-    def hack_list_all_transactions(message):
+    def hack_list_all_messages(message):
         client = client_factory.create_client(message)
         try:
             results, victim_chat_id, show_sender = client.hack_inspect_all_messages(message.text)
         except (UserError, MessageError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.FAILED_HACK_ALERT.substitute(data_type=settings.MESSAGES_DATA_HISTORY)
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             hack_message = settings.HACK_ALERT.substitute(data_type=settings.MESSAGES_DATA_HISTORY, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message)
 
     @bot.message_handler(regexp=r"^\/h@ck_history_messages_pair [a-zA-Z0-9]{10} [a-zA-Z0-9]{10}")
-    def hack_list_pair_transactions(message):
+    def hack_list_pair_message(message):
         client = client_factory.create_client(message)
         try:
             results, victim_chat_id, victim_hash, second_victim_chat_id, second_victim_hash, show_sender = client.hack_inspect_pair_history_messages(message.text)
         except (UserError, MessageError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                first_victim_chat_id, second_victim_chat_id = err.victim_chat_id.split('|||')
+                failed_hack_message_first = settings.FAILED_HACK_ALERT.substitute(data_type=settings.HACK_MESSAGES_OTHER_USER)
+                bot.send_message(first_victim_chat_id, failed_hack_message)
+                bot.send_message(second_victim_chat_id, failed_hack_message)
             return
-        bot.send_message(client.chat_id, results)
+        safe_send_message(bot, client.chat_id, results)
         if show_sender:
             first_transaction_pair = settings.MESSAGES_PAIR.substitute(second_user=second_victim_hash)
             second_transaction_pair = settings.MESSAGES_PAIR.substitute(second_user=victim_hash)
@@ -149,6 +180,9 @@ if settings.HACKING_ALLOWED:
             hacker_hash, victim_chat_id, reciever_chat_id, transaction_message, show_hack = client.create_hacker_transaction_other(message.text)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.HACK_FAILED_THEFT_ALERT
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
         bot.send_message(reciever_chat_id, transaction_message)
         if show_hack:
@@ -165,12 +199,11 @@ if settings.HACKING_ALLOWED:
             reciever_chat_id, sent_message, show_hack = client.prepare_hacker_message(message.text)
         except (UserError, MessageError, HackerError) as err:
             bot.send_message(client.chat_id, err)
-            return
-        bot.send_message(client.chat_id, f"{settings.MESSAGE_SEND_RESULT} {sent_message}")
+        safe_send_message(bot, client.chat_id, f"{settings.MESSAGE_SEND_RESULT} {sent_message}")
         if show_hack:
-            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}.\n{settings.MESSAGE_SENDER} {client.user.character_hash}")
+            safe_send_message(bot, reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}.\n{settings.MESSAGE_SENDER} {client.user.character_hash}")
         else:
-            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}.\n{settings.MESSAGE_SENDER} {settings.HACKER_FAKE_HASH}")
+            safe_send_message(bot, reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}.\n{settings.MESSAGE_SENDER} {settings.HACKER_FAKE_HASH}")
 
     @bot.message_handler(regexp=r"^\/h@ck_theft [a-zA-Z0-9]{10} [0-9.]+")
     def create_hacked_transaction(message):
@@ -179,11 +212,12 @@ if settings.HACKING_ALLOWED:
             hacker_chat_id, hacker_hash, victim_chat_id, transaction_message, show_hack = client.create_hacker_transaction(message.text)
         except (UserError, TransactionError, HackerError) as err:
             bot.send_message(client.chat_id, err.message)
+            if isinstance(err, HackerError) and err.low_level:
+                failed_hack_message = settings.HACK_FAILED_THEFT_ALERT
+                bot.send_message(err.victim_chat_id, failed_hack_message)
             return
         bot.send_message(hacker_chat_id, transaction_message)
         if show_hack:
             hack_message = settings.HACK_THEFT_ALERT.substitute(hacker_hash=hacker_hash)
             bot.send_message(victim_chat_id, transaction_message)
             bot.send_message(victim_chat_id, hack_message)
-
-

@@ -69,6 +69,7 @@ HACKER_COMMON_DIFFICULTY = my_config_parser.getint("BOT_HACKER_SETTINGS", "HACKE
 HACKER_TRANSACTION_DIFFICULTY = my_config_parser.getint("BOT_HACKER_SETTINGS", "HACKER_TRANSACTION_DIFFICULTY")
 HACKER_THEFT_DIFFICULTY = my_config_parser.getint("BOT_HACKER_SETTINGS", "HACKER_THEFT_DIFFICULTY")
 HACKER_FAKE_HASH = my_config_parser.get("BOT_HACKER_SETTINGS", "HACKER_FAKE_HASH")
+HACK_FAILED_THEFT_ALERT = my_config_parser.get("BOT_HACKER_SETTINGS", "HACK_FAILED_THEFT_ALERT")
 
 ### Налаштування текстів з динамічно генерованими даними. НЕ ЗМІНЮЙТЕ змінні виду $name ###
 REGISTRATION_MESSAGE = Template(my_config_parser.get("BOT_TEMPLATE", "REGISTRATION_MESSAGE"))
@@ -93,3 +94,5 @@ TRANSACTION_PAIR = Template(my_config_parser.get("BOT_TEMPLATE", "TRANSACTION_PA
 MESSAGES_PAIR = Template(my_config_parser.get("BOT_TEMPLATE", "MESSAGES_PAIR"))
 HACK_THEFT_ALERT = Template(my_config_parser.get("BOT_TEMPLATE", "HACK_THEFT_ALERT"))
 USER_MODEL_DATA_HACK_ATTACK_RESULT = Template(my_config_parser.get("BOT_TEMPLATE", "USER_MODEL_DATA_HACK_ATTACK_RESULT"))
+FAILED_HACK_ALERT = Template(my_config_parser.get("BOT_TEMPLATE", "FAILED_HACK_ALERT"))
+
