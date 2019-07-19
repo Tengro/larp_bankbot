@@ -1,4 +1,4 @@
-from bank_bot.bankbot.core import bot, client_factory
+from bank_bot.bankbot.core import bot, client_factory, safe_send_message
 from bank_bot import settings
 from bank_bot.banking_system import UserError, TransactionError, Database, HackerError, MessageError, AddressRecordError
 
@@ -9,7 +9,7 @@ def list_sent_transactions(message):
         message = client.inspect_transactions(is_sender=True)
     except (UserError, TransactionError) as err:
         message = err.message
-    bot.send_message(client.chat_id, message)
+    safe_send_message(bot, client.chat_id, message)
 
 @bot.message_handler(commands=['history_recieved',])
 def list_recieved_transactions(message):
@@ -18,7 +18,7 @@ def list_recieved_transactions(message):
         message = client.inspect_transactions(is_sender=False)
     except (UserError, TransactionError) as err:
         message = err.message
-    bot.send_message(client.chat_id, message)
+    safe_send_message(bot, client.chat_id, message)
 
 @bot.message_handler(commands=['history_all',])
 def list_all_transactions(message):
@@ -27,7 +27,7 @@ def list_all_transactions(message):
         message = client.inspect_all_transactions()
     except (UserError, TransactionError) as err:
         message = err.message
-    bot.send_message(client.chat_id, message)
+    safe_send_message(bot, client.chat_id, message)
 
 @bot.message_handler(regexp=r"^\/history_pair [a-zA-Z0-9]{10}")
 def list_pair_transactions(message):
@@ -36,7 +36,7 @@ def list_pair_transactions(message):
         message = client.inspect_pair_history(message=message)
     except (UserError, TransactionError) as err:
         message = err.message
-    bot.send_message(client.chat_id, message)
+    safe_send_message(bot, client.chat_id, message)
 
 
 @bot.message_handler(regexp=r"^\/send [a-zA-Z0-9]{10} [0-9.]+")

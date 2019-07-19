@@ -1,4 +1,4 @@
-from bank_bot.bankbot.core import bot, client_factory
+from bank_bot.bankbot.core import bot, client_factory, safe_send_message
 from bank_bot import settings
 from bank_bot.banking_system import UserError, TransactionError, Database, HackerError, MessageError, AddressRecordError
 
@@ -30,6 +30,6 @@ def inspect_contact_list(message):
     except (UserError, AddressRecordError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 

@@ -1,4 +1,4 @@
-from bank_bot.bankbot.core import bot, client_factory
+from bank_bot.bankbot.core import bot, client_factory, safe_send_message
 from bank_bot import settings
 from bank_bot.banking_system import UserError, TransactionError, Database, HackerError, MessageError, AddressRecordError
 
@@ -48,7 +48,7 @@ def admin_hail_users(message):
 def inspect_all_users(message):
     client = client_factory.create_client(message)
     message = client.inspect_all_users()
-    bot.send_message(client.chat_id, message)
+    safe_send_message(bot, client.chat_id, message)
 
 @bot.message_handler(regexp=r"^\/set_attribute [a-zA-Z0-9]{10} (finances|hacker_level|hacker_defence|is_admin) [0-9]+")
 def set_attribute(message):
@@ -77,7 +77,7 @@ def admin_user_sent_transaction_list(message):
     except (UserError, TransactionError) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 @bot.message_handler(regexp=r"^\/admin_history_recieved [a-zA-Z0-9]{10}")
 def admin_user_recieved_transaction_list(message):
@@ -87,7 +87,7 @@ def admin_user_recieved_transaction_list(message):
     except (UserError, TransactionError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 
 @bot.message_handler(regexp=r"^\/admin_history_all [a-zA-Z0-9]{10}")
@@ -98,7 +98,7 @@ def admin_list_all_transactions(message):
     except (UserError, TransactionError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 @bot.message_handler(regexp=r"^\/admin_history_pair [a-zA-Z0-9]{10} [a-zA-Z0-9]{10}")
 def admin_list_pair_transactions(message):
@@ -108,7 +108,7 @@ def admin_list_pair_transactions(message):
     except (UserError, TransactionError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 @bot.message_handler(regexp=r"^\/admin_history_messages_sent [a-zA-Z0-9]{10}")
 def admin_user_sent_messages_list(message):
@@ -118,7 +118,7 @@ def admin_user_sent_messages_list(message):
     except (UserError, MessageError) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 @bot.message_handler(regexp=r"^\/admin_history_messages_recieved [a-zA-Z0-9]{10}")
 def admin_user_recieved_messages_list(message):
@@ -128,7 +128,7 @@ def admin_user_recieved_messages_list(message):
     except (UserError, MessageError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 
 @bot.message_handler(regexp=r"^\/admin_history_messages_all [a-zA-Z0-9]{10}")
@@ -139,7 +139,7 @@ def admin_list_all_messages(message):
     except (UserError, MessageError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 @bot.message_handler(regexp=r"^\/admin_history_messages_pair [a-zA-Z0-9]{10} [a-zA-Z0-9]{10}")
 def admin_list_pair_messages(message):
@@ -149,7 +149,7 @@ def admin_list_pair_messages(message):
     except (UserError, MessageError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 @bot.message_handler(regexp=r"^\/admin_add_contact [a-zA-Z0-9]{10} [a-zA-Z0-9]{10} [a-zA-Z0-9а-яА-Я]{1,150}")
 def admin_add_contact(message):
@@ -179,7 +179,7 @@ def admin_inspect_contact_list(message):
     except (UserError, AddressRecordError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
-    bot.send_message(client.chat_id, results)
+    safe_send_message(bot, client.chat_id, results)
 
 
 @bot.message_handler(
