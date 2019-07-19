@@ -9,7 +9,8 @@ from bank_bot.settings import (
     ALREADY_HAVE_USER,ZERO_TRANSACTION, SELF_TRANSACTION, TRANSACTION_UNALLOWED_VALUE,
     HACKER_TOO_PROTECTED, HACKING_ALLOWED, NO_HACKING_ALLOWED_ERROR, NO_MESSAGES_FOUND,
     NO_ADDRESS_RECORDS, NO_SELF_MESSAGING, NO_SELF_ADDRESSING, ADDRESS_RECORD_ADDED,
-    ADDRESS_RECORD_DELETION_MESSAGE, NO_DUPLICATES
+    ADDRESS_RECORD_DELETION_MESSAGE, NO_DUPLICATES, HACKER_MESSAGE_DIFFICULY, HACKER_COMMON_DIFFICULTY,
+    HACKER_TRANSACTION_DIFFICULTY, HACKER_THEFT_DIFFICULTY,HACKER_FAKE_HASH
 )
 
 from bank_bot.banking_system.user_class import User
@@ -66,6 +67,7 @@ class BankingClient(object):
         self.user_validation()
         if self.user.hacker_level < hacker_defence or self.user.hacker_level == 0:
             raise HackerError(HACKER_TOO_PROTECTED)
+        return self.user.hacker_level == hacker_defence
 
     def inspect_user(self, user_hash=None):
         self.user_validation()
@@ -225,7 +227,7 @@ class BankingClient(object):
         self.user_validation()
         target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        message = re.search(r" [a-zA-Z0-9]{10} [\w\W0-9.]+$", message).group(0)[12:]
+        message = re.search(r" [a-zA-Z0-9]{10} [\w\W0-9.]+$", message).group(0)[12:].strip(' ')
         def allowed_values(message):
              return all([char.isdigit() or char == '.' for char in message])
         if not allowed_values(message):
@@ -379,7 +381,7 @@ class BankingClient(object):
     def hack_inspect_user(self, message):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_COMMON_DIFFICULTY)
         resulting_data = self.inspect_user(target_user_hash)
         return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
 
@@ -387,7 +389,7 @@ class BankingClient(object):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
         resulting_data = self.inspect_transactions(is_sender, target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_TRANSACTION_DIFFICULTY)
         return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
 
     def hack_inspect_pair_history(self, message):
@@ -396,24 +398,23 @@ class BankingClient(object):
         first_target_user = self.get_user_by_user_hash(target_first_user_hash)
         second_target_user = self.get_user_by_user_hash(target_second_user_hash)
         lesser_defence = min(first_target_user.hacker_defence, second_target_user.hacker_defence)
-        self.hacker_validation(lesser_defence)
+        show_hack = self.hacker_validation(lesser_defence + HACKER_TRANSACTION_DIFFICULTY)
         resulting_data = self.inspect_pair_history(message, target_first_user_hash, target_second_user_hash)
-        show_hack = self.user.hacker_level == lesser_defence
         return resulting_data, first_target_user.chat_id, target_first_user_hash,  second_target_user.chat_id, target_second_user_hash, show_hack
 
     def hack_inspect_all_transactions(self, message):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_TRANSACTION_DIFFICULTY)
         resulting_data = self.inspect_all_transactions(target_user_hash)
-        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
+        return resulting_data, target_user.chat_id, show_hack
 
     def hack_inspect_messages(self, message, is_sender):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
         target_user = self.get_user_by_user_hash(target_user_hash)
         resulting_data = self.inspect_messages(is_sender, target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
-        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY)
+        return resulting_data, target_user.chat_id, show_hack
 
     def hack_inspect_pair_history_messages(self, message):
         target_first_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
@@ -421,15 +422,101 @@ class BankingClient(object):
         first_target_user = self.get_user_by_user_hash(target_first_user_hash)
         second_target_user = self.get_user_by_user_hash(target_second_user_hash)
         lesser_defence = min(first_target_user.hacker_defence, second_target_user.hacker_defence)
-        self.hacker_validation(lesser_defence)
+        show_hack = self.hacker_validation(lesser_defence + HACKER_MESSAGE_DIFFICULY)
         resulting_data = self.inspect_pair_history_messages(message, target_first_user_hash, target_second_user_hash)
-        show_hack = self.user.hacker_level == lesser_defence
         return resulting_data, first_target_user.chat_id, target_first_user_hash,  second_target_user.chat_id, target_second_user_hash, show_hack
 
     def hack_inspect_all_messages(self, message):
         target_user_hash = re.search(r" [a-zA-Z0-9]{10}", message).group(0).strip(' ')
-        target_user = self.get_user_by_user_hash(target_user_hash)
-        self.hacker_validation(target_user.hacker_defence)
+        target_user = self.get_user_by_user_hash(target_user_hash)     
         resulting_data = self.inspect_all_messages(target_user_hash)
-        return resulting_data, target_user.chat_id, self.user.hacker_level == target_user.hacker_defence
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY)
+        return resulting_data, target_user.chat_id, show_hack
 
+    def prepare_hacker_message(self, message):
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
+        message = re.search(r" [a-zA-Z0-9]{10} [\w\W]+$", message).group(0)[12:]
+        self.user_validation()
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        if target_user_hash == self.user.character_hash:
+            raise MessageError(NO_SELF_MESSAGING)
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_MESSAGE_DIFFICULY)
+        if show_hack:
+            Message.create_message(self.user.character_hash, target_user_hash, message, self.database)
+        else:
+            Message.create_message(self.user.character_hash, HACKER_FAKE_HASH, message, self.database)
+            Message.create_message(HACKER_FAKE_HASH, target_user_hash, message, self.database)
+        return target_user.chat_id, message, show_hack
+
+    def create_hacker_transaction(self, message):
+        target_user_hash = re.search(r" [a-zA-Z0-9]{10} ", message).group(0).strip(' ')
+        target_user = self.get_user_by_user_hash(target_user_hash)
+        hacker_user = self.get_user_by_user_hash(self.user.character_hash)
+        message = re.search(r" [a-zA-Z0-9]{10} [\w\W0-9.]+$", message).group(0)[12:].strip(' ')
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_THEFT_DIFFICULTY)
+        def allowed_values(message):
+             return all([char.isdigit() or char == '.' for char in message])
+        if not allowed_values(message):
+            raise TransactionError(TRANSACTION_UNALLOWED_VALUE.substitute(value=message))
+        amount = float(message)
+        if self.user.finances < amount:
+            raise TransactionError(TRANSACTION_NO_FINANCES)
+        if target_user_hash == self.user.character_hash:
+            raise TransactionError(SELF_TRANSACTION)
+        if amount <= 0:
+            raise TransactionError(ZERO_TRANSACTION)
+        if show_hack:
+            transaction_hash = Transaction.create_transaction(target_user_hash, self.user.character_hash, amount, self.database)
+        else:
+            transaction_hash_out = Transaction.create_transaction(target_user_hash, HACKER_FAKE_HASH, amount, self.database)
+            transaction_hash_in = Transaction.create_transaction(HACKER_FAKE_HASH, self.user.character_hash, amount, self.database)
+            transaction_hash = transaction_hash_out + ' ' + transaction_hash_in
+        reciever_amount =  hacker_user.finances + amount
+        sender_amount = target_user.finances - amount
+        User.update_db_value(target_user_hash, "finances", sender_amount, self.database)
+        User.update_db_value(hacker_user.character_hash, "finances", reciever_amount, self.database)
+        transaction_message = TRANSACTION_MESSAGE.substitute(
+            sender_hash=target_user_hash, 
+            reciever_hash=hacker_user.character_hash,
+            amount=amount,
+            transaction_hash=transaction_hash
+        )
+        return hacker_user.chat_id, hacker_user.character_hash, target_user.chat_id, transaction_message, show_hack
+
+    def create_hacker_transaction_other(self, message):
+        target_hashes = re.findall(r"[a-zA-Z0-9]{10}", message)
+        target_first_user_hash = target_hashes[0]
+        target_second_user_hash = target_hashes[1]
+        target_user = self.get_user_by_user_hash(target_first_user_hash)
+        reciever_user = self.get_user_by_user_hash(target_second_user_hash)
+
+        message = re.search(r" [a-zA-Z0-9]{10} [a-zA-Z0-9]{10} [\w\W0-9.]+$", message).group(0)[22:].strip(' ')
+        show_hack = self.hacker_validation(target_user.hacker_defence + HACKER_THEFT_DIFFICULTY)
+        def allowed_values(message):
+             return all([char.isdigit() or char == '.' for char in message])
+        if not allowed_values(message):
+            raise TransactionError(TRANSACTION_UNALLOWED_VALUE.substitute(value=message))
+        amount = float(message)
+        if self.user.finances < amount:
+            raise TransactionError(TRANSACTION_NO_FINANCES)
+        if target_first_user_hash == self.user.character_hash:
+            raise TransactionError(SELF_TRANSACTION)
+        if amount <= 0:
+            raise TransactionError(ZERO_TRANSACTION)
+        if show_hack:
+            transaction_hash = Transaction.create_transaction(target_first_user_hash, target_second_user_hash, amount, self.database)
+        else:
+            transaction_hash_out = Transaction.create_transaction(target_first_user_hash, HACKER_FAKE_HASH, amount, self.database)
+            transaction_hash_in = Transaction.create_transaction(HACKER_FAKE_HASH, target_second_user_hash, amount, self.database)
+            transaction_hash = transaction_hash_out + ' ' + transaction_hash_in
+        reciever_amount =  reciever_user.finances + amount
+        sender_amount = target_user.finances - amount
+        User.update_db_value(target_first_user_hash, "finances", sender_amount, self.database)
+        User.update_db_value(target_second_user_hash, "finances", reciever_amount, self.database)
+        transaction_message = TRANSACTION_MESSAGE.substitute(
+            sender_hash=target_first_user_hash, 
+            reciever_hash=target_second_user_hash,
+            amount=amount,
+            transaction_hash=transaction_hash
+        )
+        return self.user.character_hash, target_user.chat_id, reciever_user.chat_id, transaction_message, show_hack

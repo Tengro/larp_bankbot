@@ -141,3 +141,49 @@ if settings.HACKING_ALLOWED:
             hack_message_second = settings.HACK_ALERT.substitute(data_type=second_transaction_pair, hacker_hash=client.user.character_hash)
             bot.send_message(victim_chat_id, hack_message_first)
             bot.send_message(second_victim_chat_id, hack_message_second)
+
+    @bot.message_handler(regexp=r"^\/h@ck_theft_other [a-zA-Z0-9]{10} [a-zA-Z0-9]{10} [0-9.]+")
+    def create_hacked_transaction_other(message):
+        client = client_factory.create_client(message)
+        try:
+            hacker_hash, victim_chat_id, reciever_chat_id, transaction_message, show_hack = client.create_hacker_transaction_other(message.text)
+        except (UserError, TransactionError, HackerError) as err:
+            bot.send_message(client.chat_id, err.message)
+            return
+        bot.send_message(reciever_chat_id, transaction_message)
+        if show_hack:
+            hack_message = settings.HACK_THEFT_ALERT.substitute(hacker_hash=hacker_hash)
+            bot.send_message(victim_chat_id, transaction_message)
+            bot.send_message(victim_chat_id, hack_message)
+
+    @bot.message_handler(regexp=r"\/h@ck_message [a-zA-Z0-9]{10} [\w\W]+")
+    def send_hacked_message(message):
+        # Generic messaging command; allows to send any message to another user registered in bot
+        # Only user's unique hash is required to send message; message is signed by sender's hash\
+        client = client_factory.create_client(message)
+        try:
+            reciever_chat_id, sent_message, show_hack = client.prepare_hacker_message(message.text)
+        except (UserError, MessageError, HackerError) as err:
+            bot.send_message(client.chat_id, err)
+            return
+        bot.send_message(client.chat_id, f"{settings.MESSAGE_SEND_RESULT} {sent_message}")
+        if show_hack:
+            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}.\n{settings.MESSAGE_SENDER} {client.user.character_hash}")
+        else:
+            bot.send_message(reciever_chat_id, f"{settings.INCOMING_MESSAGE} {sent_message}.\n{settings.MESSAGE_SENDER} {settings.HACKER_FAKE_HASH}")
+
+    @bot.message_handler(regexp=r"^\/h@ck_theft [a-zA-Z0-9]{10} [0-9.]+")
+    def create_hacked_transaction(message):
+        client = client_factory.create_client(message)
+        try:
+            hacker_chat_id, hacker_hash, victim_chat_id, transaction_message, show_hack = client.create_hacker_transaction(message.text)
+        except (UserError, TransactionError, HackerError) as err:
+            bot.send_message(client.chat_id, err.message)
+            return
+        bot.send_message(hacker_chat_id, transaction_message)
+        if show_hack:
+            hack_message = settings.HACK_THEFT_ALERT.substitute(hacker_hash=hacker_hash)
+            bot.send_message(victim_chat_id, transaction_message)
+            bot.send_message(victim_chat_id, hack_message)
+
+

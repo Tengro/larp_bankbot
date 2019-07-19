@@ -254,3 +254,117 @@ def test_hack_inspect_pair_messages(database, mock_message):
     results, chat_id, hash_1, chat_2_id, hash_2, show_hack = client.hack_inspect_pair_history_messages(f"/hack_messages_history_pair {character_hash_4} {character_hash_3}")
     assert results != NO_MESSAGES_FOUND
     assert show_hack
+
+def test_hack_send_hacked_message(database, mock_message):
+    User.create_admin(1, 1, database)
+    character_hash = User.create_user(2, 2, "Test user", database)
+    User.update_db_value(character_hash, "hacker_level", 1, database)
+    client = BankingClientFactory(database).create_client(mock_message)
+    character_hash_2 = User.create_user(3, 3, "Test user 2", database)
+    character_hash_4 = User.create_user(4, 4, "Test user 4", database)
+    User.update_db_value(character_hash_4, "hacker_defence", 1, database)
+    user2 = client.get_user_by_user_hash(character_hash_2)
+    user4 = client.get_user_by_user_hash(character_hash_4)
+    with pytest.raises(UserError):
+        client.prepare_hacker_message("/h@ck_message 1234567890 OLOLO")
+    chat_id, sent_message, show_hack = client.prepare_hacker_message(f'/h@ck_message {character_hash_2} OLOLO')
+    assert sent_message == "OLOLO"
+    assert chat_id == user2.chat_id
+    assert not show_hack
+    with pytest.raises(HackerError):
+        client.hack_inspect_user(f'/h@ck_message 0000000000 OLOLO')
+    chat_id, sent_message, show_hack= client.prepare_hacker_message(f'/h@ck_message {character_hash_4} OLOLO')
+    assert sent_message == "OLOLO"
+    assert chat_id == user4.chat_id
+    assert show_hack
+
+
+def test_create_hacked_transaction(database, mock_message):
+    User.create_admin(1, 1, database)
+    character_hash = User.create_user(2, 2, "Test user", database)
+    User.update_db_value(character_hash, "hacker_level", 1, database)
+    character_hash_2 = User.create_user(3, 3, "Test user 2", database)
+    character_hash_4 = User.create_user(4, 4, "Test user 4", database)
+    User.update_db_value(character_hash_4, "hacker_defence", 1, database)
+    client = BankingClientFactory(database).create_client(mock_message)
+    double_amount = DEFAULT_FINANCES * 2
+    half_amount = DEFAULT_FINANCES / 2
+    user2 = client.get_user_by_user_hash(character_hash_2)
+    user1 = client.get_user_by_user_hash(character_hash)
+    assert user2.finances == DEFAULT_FINANCES
+    assert user1.finances == DEFAULT_FINANCES
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction(f"/h@ck_theft {character_hash_2} {double_amount}")
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction(f"/h@ck_theft {character_hash} {half_amount}")
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction(f"/h@ck_theft {character_hash_2} notanumber")
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction(f"/h@ck_theft {character_hash_2} 0")
+    with pytest.raises(UserError):
+        client.create_hacker_transaction(f"/h@ck_theft 1234567890 {half_amount}")
+    with pytest.raises(HackerError):
+        client.create_hacker_transaction(f"/h@ck_theft 0000000000 {half_amount}")
+    hacker_chat_id, hacker_hash, victim_chat_id, transaction_message, show_hack = client.create_hacker_transaction(f"/h@ck_theft {character_hash_2} {half_amount}")
+    user2 = client.get_user_by_user_hash(character_hash_2)
+    user1 = client.get_user_by_user_hash(character_hash)
+    assert user2.finances == DEFAULT_FINANCES - half_amount
+    assert user1.finances == DEFAULT_FINANCES + half_amount
+    assert hacker_chat_id == user1.chat_id
+    assert victim_chat_id == user2.chat_id
+    assert not show_hack
+
+    hacker_chat_id, hacker_hash, victim_chat_id, transaction_message, show_hack = client.create_hacker_transaction(f"/h@ck_theft {character_hash_4} {half_amount}")
+    user2 = client.get_user_by_user_hash(character_hash_4)
+    user = client.get_user_by_user_hash(character_hash)
+    assert hacker_chat_id == user1.chat_id
+    assert victim_chat_id == user2.chat_id
+    assert user2.finances == DEFAULT_FINANCES - half_amount
+    assert user.finances == DEFAULT_FINANCES + half_amount + half_amount
+    assert show_hack
+
+
+def test_create_hacked_transaction_other(database, mock_message):
+    User.create_admin(1, 1, database)
+    character_hash = User.create_user(2, 2, "Test user", database)
+    User.update_db_value(character_hash, "hacker_level", 1, database)
+    character_hash_2 = User.create_user(3, 3, "Test user 2", database)
+    character_hash_4 = User.create_user(4, 4, "Test user 4", database)
+    character_hash_5 = User.create_user(5, 5, "Test user 5", database)
+    User.update_db_value(character_hash_4, "hacker_defence", 1, database)
+    client = BankingClientFactory(database).create_client(mock_message)
+    double_amount = DEFAULT_FINANCES * 2
+    half_amount = DEFAULT_FINANCES / 2
+    user2 = client.get_user_by_user_hash(character_hash_2)
+    user1 = client.get_user_by_user_hash(character_hash)
+    assert user2.finances == DEFAULT_FINANCES
+    assert user1.finances == DEFAULT_FINANCES
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction_other(f"/h@ck_theft_other {character_hash_2} {character_hash_5} {double_amount}")
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction_other(f"/h@ck_theft_other {character_hash} {character_hash_5} {half_amount}")
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction_other(f"/h@ck_theft_other {character_hash_2} {character_hash_5} notanumber")
+    with pytest.raises(TransactionError):
+        client.create_hacker_transaction_other(f"/h@ck_theft_other {character_hash_2} {character_hash_5} 0")
+    with pytest.raises(UserError):
+        client.create_hacker_transaction_other(f"/h@ck_theft_other 1234567890 {character_hash_5} {half_amount}")
+    with pytest.raises(HackerError):
+        client.create_hacker_transaction_other(f"/h@ck_theft_other 0000000000 {character_hash_5} {half_amount}")
+    hacker_hash, victim_chat_id, profiteer_chat_id, transaction_message, show_hack = client.create_hacker_transaction_other(f"/h@ck_theft_other {character_hash_2} {character_hash_5} {half_amount}")
+    user2 = client.get_user_by_user_hash(character_hash_2)
+    user5 = client.get_user_by_user_hash(character_hash_5)
+    assert user2.finances == DEFAULT_FINANCES - half_amount
+    assert user5.finances == DEFAULT_FINANCES + half_amount
+    assert hacker_hash == client.user.character_hash
+    assert victim_chat_id == user2.chat_id
+    assert not show_hack
+
+    hacker_hash, victim_chat_id, profiteer_chat_id, transaction_message, show_hack = client.create_hacker_transaction_other(f"/h@ck_theft_other {character_hash_4} {character_hash_5} {half_amount}")
+    user4 = client.get_user_by_user_hash(character_hash_4)
+    user5 = client.get_user_by_user_hash(character_hash_5)
+    assert hacker_hash == client.user.character_hash
+    assert victim_chat_id == user4.chat_id
+    assert user4.finances == DEFAULT_FINANCES - half_amount
+    assert user5.finances == DEFAULT_FINANCES + half_amount + half_amount
+    assert show_hack
