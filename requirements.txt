@@ -19,4 +19,4 @@ urllib3==1.25.3
 wcwidth==0.1.7
 zipp==0.5.1
 configparser==3.7.4
-python-coveralls=2.9.2
+python-coveralls==2.9.2
