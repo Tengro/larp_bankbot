@@ -1,9 +1,11 @@
 # LARP BankBot
 LARP BankBot: бот загального користування для імплементації банкінгу на рольових іграх живої дії
 
-Статус білда майстер-бранчу (Travis CI):  
-[![Build Status](https://travis-ci.org/Tengro/larp_bankbot.svg?branch=master)](https://travis-ci.org/Tengro/larp_bankbot)  
-(Якщо цей статус почервоніє - пишіть tengro@gmail.com або у Телеграм @tengro)
+## Статус проекту
+Статус білда майстер-бранчу (Travis CI):
+[![Build Status](https://travis-ci.org/Tengro/larp_bankbot.svg?branch=master)](https://travis-ci.org/Tengro/larp_bankbot) [![Coverage Status](https://coveralls.io/repos/github/Tengro/larp_bankbot/badge.svg?branch=master)](https://coveralls.io/github/Tengro/larp_bankbot?branch=master)\
+Кнопка для пожертв для бажаючих:\
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=3W3JM9CLJDNXY&source=url)
 
 ## Для чого це потрібно?
 Мета розробки даного проекту - поширення використання сучасних технологій у РІЖД; найбільш очевидна система, що часто стає у нагоді у грі - банківська система. Даний код дозволяє заощадити масу зусиль і розвернути типовий банкінг для будь-якої гри за півгодини, використовуючи ботів Telegram.
