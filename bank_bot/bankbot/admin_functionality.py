@@ -73,7 +73,7 @@ def admin_inspect_user(message):
 def admin_user_sent_transaction_list(message):
     client = client_factory.create_client(message)
     try:
-        results, = client.admin_inspect_transactions(message.text, is_sender=True)
+        results = client.admin_inspect_transactions(message.text, is_sender=True)
     except (UserError, TransactionError) as err:
         bot.send_message(client.chat_id, err.message)
         return
@@ -83,7 +83,7 @@ def admin_user_sent_transaction_list(message):
 def admin_user_recieved_transaction_list(message):
     client = client_factory.create_client(message)
     try:
-        results, = client.admin_inspect_transactions(message.text, is_sender=False)
+        results = client.admin_inspect_transactions(message.text, is_sender=False)
     except (UserError, TransactionError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
@@ -114,7 +114,7 @@ def admin_list_pair_transactions(message):
 def admin_user_sent_messages_list(message):
     client = client_factory.create_client(message)
     try:
-        results, = client.admin_inspect_messages(message.text, is_sender=True)
+        results = client.admin_inspect_messages(message.text, is_sender=True)
     except (UserError, MessageError) as err:
         bot.send_message(client.chat_id, err.message)
         return
@@ -124,7 +124,7 @@ def admin_user_sent_messages_list(message):
 def admin_user_recieved_messages_list(message):
     client = client_factory.create_client(message)
     try:
-        results, = client.admin_inspect_messages(message.text, is_sender=False)
+        results = client.admin_inspect_messages(message.text, is_sender=False)
     except (UserError, MessageError,) as err:
         bot.send_message(client.chat_id, err.message)
         return
