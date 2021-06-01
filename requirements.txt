@@ -15,7 +15,7 @@ pyTelegramBotAPI==3.6.6
 pytest==5.0.0
 requests==2.22.0
 six==1.12.0
-urllib3==1.25.3
+urllib3==1.26.5
 wcwidth==0.1.7
 zipp==0.5.1
 configparser==3.7.4
